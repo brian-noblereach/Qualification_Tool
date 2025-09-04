@@ -204,12 +204,8 @@ function displayResults(data) {
     elements.resultsSection.style.display = 'block';
     elements.exportBtn.style.display = 'flex';
     
-    // Populate summary
-    elements.aiScore.textContent = scoringData.score;
-    elements.scoreConfidence.textContent = `Confidence: ${(scoringData.confidence * 100).toFixed(0)}%`;
-    elements.tamValue.textContent = formatCurrency(marketData.primary_market.tam_usd);
-    elements.cagrValue.textContent = formatPercentage(marketData.primary_market.cagr_percent);
-    elements.marketDesc.textContent = marketData.primary_market.description;
+    // Populate summary with new layout
+    populateSummaryCard(marketData, scoringData);
     
     // Set user slider to AI score initially
     elements.userScoreSlider.value = scoringData.score;
@@ -223,6 +219,151 @@ function displayResults(data) {
     
     // Raw data
     elements.rawDataDisplay.textContent = JSON.stringify({ marketData, scoringData }, null, 2);
+}
+// New function for cleaner summary card
+function populateSummaryCard(marketData, scoringData) {
+    // AI Score section
+    elements.aiScore.textContent = scoringData.score;
+    elements.scoreConfidence.textContent = `Confidence: ${(scoringData.confidence * 100).toFixed(0)}%`;
+    elements.tamValue.textContent = formatCurrency(marketData.primary_market.tam_usd);
+    elements.cagrValue.textContent = formatPercentage(marketData.primary_market.cagr_percent);
+    elements.marketDesc.textContent = marketData.primary_market.description;
+    
+    // Add rubric context
+    const rubricContext = document.getElementById('rubricContext');
+    rubricContext.innerHTML = `
+        <div class="rubric-reference">
+            <h4>Score ${scoringData.score} Means:</h4>
+            <p>${getRubricDescription(scoringData.rubric_application)}</p>
+            <div class="score-factors">
+                <span class="factor-badge tam-${scoringData.rubric_application.tam_category}">
+                    TAM: ${formatTAMCategory(scoringData.rubric_application.tam_category)}
+                </span>
+                <span class="factor-badge cagr-${scoringData.rubric_application.cagr_category}">
+                    CAGR: ${formatCAGRCategory(scoringData.rubric_application.cagr_category)}
+                </span>
+            </div>
+        </div>
+    `;
+    
+    // Quick insights (replacing long lists)
+    const quickInsights = document.getElementById('quickInsights');
+    quickInsights.innerHTML = `
+        <div class="insight-grid">
+            <div class="insight-card strength">
+                <h4>Top Strength</h4>
+                <p>${scoringData.justification.strengths_considered[0] || 'Strong market fundamentals'}</p>
+            </div>
+            <div class="insight-card risk">
+                <h4>Key Risk</h4>
+                <p>${scoringData.justification.key_risks[0] || 'Market execution risk'}</p>
+            </div>
+            <div class="insight-card opportunity">
+                <h4>Opportunity</h4>
+                <p>${marketData.market_analysis.opportunities[0] || 'Growing market demand'}</p>
+            </div>
+        </div>
+    `;
+    
+    // Primary source
+    const primarySource = marketData.markets.find(m => m.rank === 1);
+    if (primarySource) {
+        const sourceInfo = document.getElementById('sourceInfo');
+        sourceInfo.innerHTML = `
+            <div class="source-reference">
+                <span class="source-label">Primary Data Source:</span>
+                <a href="${primarySource.source_url}" target="_blank" class="source-link">
+                    ${new URL(primarySource.source_url).hostname}
+                </a>
+                <span class="source-confidence">Confidence: ${(primarySource.confidence * 100).toFixed(0)}%</span>
+            </div>
+        `;
+    }
+}
+
+// Helper functions for rubric context
+function getRubricDescription(rubricApplication) {
+    const descriptions = {
+        '1': 'Very weak market opportunity with minimal growth potential',
+        '2': 'Weak market with limited size and slow growth',
+        '3': 'Small market with some growth potential',
+        '4': 'Moderate market size with limited growth',
+        '5': 'Moderate market with reasonable growth',
+        '6': 'Good market opportunity with strong growth potential',
+        '7': 'Large market with solid growth or strong niche with exceptional growth',
+        '8': 'Very large market with good growth potential',
+        '9': 'Exceptional market opportunity with both large size and rapid growth'
+    };
+    return descriptions[rubricApplication.base_score] || descriptions['5'];
+}
+
+function formatTAMCategory(category) {
+    const formats = {
+        'under_500M': '<$500M',
+        '500M_to_5B': '$500M-$5B',
+        'over_5B': '>$5B'
+    };
+    return formats[category] || category;
+}
+
+function formatCAGRCategory(category) {
+    const formats = {
+        'under_10': '<10%',
+        '10_to_35': '10-35%',
+        'over_35': '>35%'
+    };
+    return formats[category] || category;
+}
+
+// Update handleScoreSubmit to always require a comment
+function handleScoreSubmit() {
+    const userScore = parseInt(elements.userScoreSlider.value);
+    const aiScore = parseInt(elements.aiScore.textContent);
+    const deviation = calculateDeviation(aiScore, userScore);
+    const comment = elements.scoreComment.value.trim();
+    
+    if (!comment) {
+        alert('Please provide a comment explaining your score assessment.');
+        elements.scoreComment.focus();
+        return;
+    }
+    
+    // Save user score and comment
+    currentAnalysis.userScore = userScore;
+    currentAnalysis.justification = comment;
+    currentAnalysis.hasDeviation = deviation > 2;
+    
+    // Show confirmation with updated message
+    const successMsg = document.createElement('div');
+    successMsg.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 3rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        z-index: 1000;
+        text-align: center;
+    `;
+    successMsg.innerHTML = `
+        <h3 style="margin-bottom: 1rem;">✓ Assessment Submitted</h3>
+        <p>Score: ${userScore}/9</p>
+        <p style="font-size: 0.9rem; margin-top: 0.5rem;">Comment saved</p>
+    `;
+    document.body.appendChild(successMsg);
+    
+    setTimeout(() => {
+        document.body.removeChild(successMsg);
+    }, 3000);
+    
+    // Disable further changes
+    elements.userScoreSlider.disabled = true;
+    elements.submitScoreBtn.disabled = true;
+    elements.submitScoreBtn.textContent = 'Assessment Submitted';
+    elements.scoreComment.disabled = true;
 }
 
 // Populate evidence lists

@@ -65,111 +65,180 @@
 
         <!-- Results Section -->
         <section class="results-section" id="resultsSection" style="display: none;">
-            <!-- Summary Card -->
-            <div class="summary-card">
-                <div class="summary-header">
-                    <h2>Market Opportunity Assessment</h2>
-                    <div class="view-toggles">
-                        <button class="view-toggle active" data-view="summary">Summary</button>
-                        <button class="view-toggle" data-view="detailed">Detailed</button>
-                        <button class="view-toggle" data-view="data">Raw Data</button>
+    <!-- Compact Summary Card -->
+    <div class="summary-card">
+        <div class="summary-header">
+            <h2>Market Opportunity Assessment</h2>
+            <div class="view-toggles">
+                <button class="view-toggle active" data-view="summary">Summary</button>
+                <button class="view-toggle" data-view="detailed">Evidence</button>
+                <button class="view-toggle" data-view="rubric">Rubric</button>
+                <button class="view-toggle" data-view="sources">Sources</button>
+                <button class="view-toggle" data-view="data">Raw Data</button>
+            </div>
+        </div>
+        
+        <!-- Scoring Section -->
+        <div class="scoring-section">
+            <!-- AI Score Panel -->
+            <div class="ai-score-panel">
+                <div class="score-display-compact">
+                    <div class="ai-badge">AI</div>
+                    <div class="score-value" id="aiScore">-</div>
+                    <div class="score-confidence" id="scoreConfidence">-</div>
+                </div>
+                <div class="key-metrics">
+                    <div class="metric-item">
+                        <span class="metric-label">TAM</span>
+                        <span class="metric-value" id="tamValue">-</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">CAGR</span>
+                        <span class="metric-value" id="cagrValue">-</span>
+                    </div>
+                </div>
+                <div class="market-description" id="marketDesc">-</div>
+            </div>
+
+            <!-- User Score Panel -->
+            <div class="user-score-panel">
+                <h3>Your Assessment</h3>
+                <div class="score-input-group">
+                    <div class="score-slider-compact">
+                        <input type="range" min="1" max="9" value="5" class="slider" id="userScoreSlider">
+                        <div class="slider-value" id="userScoreDisplay">5</div>
+                    </div>
+                    <div class="slider-labels">
+                        <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                        <span>6</span><span>7</span><span>8</span><span>9</span>
                     </div>
                 </div>
                 
-                <!-- AI Score Display -->
-                <div class="score-display">
-                    <div class="ai-score-container">
-                        <div class="score-label">AI Score</div>
-                        <div class="score-value" id="aiScore">-</div>
-                        <div class="score-confidence" id="scoreConfidence">Confidence: -</div>
-                    </div>
-                    <div class="score-details">
-                        <div class="metric-row">
-                            <span class="metric-label">TAM:</span>
-                            <span class="metric-value" id="tamValue">-</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">CAGR:</span>
-                            <span class="metric-value" id="cagrValue">-</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Market:</span>
-                            <span class="metric-value market-desc" id="marketDesc">-</span>
-                        </div>
-                    </div>
+                <div class="comment-section">
+                    <label for="scoreComment">Assessment Rationale (Required)</label>
+                    <textarea 
+                        id="scoreComment" 
+                        placeholder="Explain your score assessment..."
+                        rows="3"
+                        class="score-comment"
+                    ></textarea>
                 </div>
-
-                <!-- User Scoring Section -->
-                <div class="user-scoring-section">
-                    <h3>Your Assessment</h3>
-                    <div class="scoring-slider">
-                        <input type="range" min="1" max="9" value="5" class="slider" id="userScoreSlider">
-                        <div class="slider-labels">
-                            <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
-                            <span>6</span><span>7</span><span>8</span><span>9</span>
-                        </div>
-                        <div class="user-score-display" id="userScoreDisplay">5</div>
-                    </div>
-                    
-                    <div class="deviation-warning" id="deviationWarning" style="display: none;">
-                        <span class="warning-icon">⚠</span>
-                        <span>Large deviation from AI score detected</span>
-                        <input type="text" 
-                               id="justificationInput" 
-                               placeholder="Please provide justification..."
-                               class="justification-input">
-                    </div>
-
-                    <button class="submit-score-btn" id="submitScoreBtn">Submit Score</button>
+                
+                <div class="deviation-indicator" id="deviationIndicator" style="display: none;">
+                    <span class="deviation-icon">⚠</span>
+                    <span>Score deviates significantly from AI assessment</span>
                 </div>
+                
+                <button class="submit-score-btn" id="submitScoreBtn">Submit Assessment</button>
             </div>
+        </div>
 
-            <!-- Detailed Views (Hidden by default) -->
-            <div class="detailed-view" id="summaryView">
+        <!-- Rubric Context -->
+        <div id="rubricContext" class="rubric-context"></div>
+
+        <!-- Quick Insights -->
+        <div id="quickInsights" class="quick-insights"></div>
+
+        <!-- Source Info -->
+        <div id="sourceInfo" class="source-info"></div>
+    </div>
+
+    <!-- View Contents -->
+    <div class="view-content">
+        <!-- Summary View (default) -->
+        <div class="detailed-view" id="summaryView">
+            <!-- Will be populated dynamically -->
+        </div>
+
+        <!-- Evidence View -->
+        <div class="detailed-view" id="evidenceView" style="display: none;">
+            <div class="evidence-columns">
                 <div class="evidence-section">
-                    <h3>Key Strengths</h3>
+                    <h3>Strengths</h3>
                     <ul id="strengthsList" class="evidence-list strengths"></ul>
                 </div>
                 <div class="evidence-section">
-                    <h3>Key Limitations</h3>
+                    <h3>Limitations</h3>
                     <ul id="limitationsList" class="evidence-list limitations"></ul>
                 </div>
                 <div class="evidence-section">
-                    <h3>Market Analysis</h3>
-                    <div id="marketAnalysis" class="analysis-content"></div>
+                    <h3>Key Risks</h3>
+                    <ul id="risksList" class="evidence-list risks"></ul>
                 </div>
             </div>
+        </div>
 
-            <div class="detailed-view" id="detailedView" style="display: none;">
-                <div class="markets-table-container">
-                    <h3>Market Segments Analyzed</h3>
-                    <table class="markets-table" id="marketsTable">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Market Description</th>
-                                <th>TAM (2024/25)</th>
-                                <th>CAGR</th>
-                                <th>Confidence</th>
-                                <th>Source</th>
-                            </tr>
-                        </thead>
-                        <tbody id="marketsTableBody"></tbody>
-                    </table>
-                </div>
-                <div class="rubric-application">
-                    <h3>Scoring Methodology</h3>
-                    <div id="rubricDetails"></div>
-                </div>
+        <!-- Rubric View -->
+        <div class="detailed-view" id="rubricView" style="display: none;">
+            <div class="rubric-guide">
+                <h3>Market Opportunity Scoring Rubric</h3>
+                <table class="rubric-table">
+                    <thead>
+                        <tr>
+                            <th>Score</th>
+                            <th>TAM</th>
+                            <th>CAGR</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="score-1-3">
+                            <td>1-3</td>
+                            <td>&lt;$500M</td>
+                            <td>Varies</td>
+                            <td>Small market with limited growth potential</td>
+                        </tr>
+                        <tr class="score-4-5">
+                            <td>4-5</td>
+                            <td>$500M-$5B</td>
+                            <td>&lt;35%</td>
+                            <td>Moderate market with reasonable opportunity</td>
+                        </tr>
+                        <tr class="score-6-7">
+                            <td>6-7</td>
+                            <td>Mixed</td>
+                            <td>Mixed</td>
+                            <td>Good market with either large size or high growth</td>
+                        </tr>
+                        <tr class="score-8-9">
+                            <td>8-9</td>
+                            <td>&gt;$5B</td>
+                            <td>&gt;10%</td>
+                            <td>Exceptional market opportunity</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div id="rubricDetails" class="rubric-details"></div>
             </div>
+        </div>
 
-            <div class="detailed-view" id="dataView" style="display: none;">
-                <div class="raw-data-container">
-                    <h3>Raw API Response</h3>
-                    <pre id="rawDataDisplay"></pre>
-                </div>
+        <!-- Sources View -->
+        <div class="detailed-view" id="sourcesView" style="display: none;">
+            <h3>Data Sources</h3>
+            <table class="markets-table" id="marketsTable">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Market</th>
+                        <th>TAM</th>
+                        <th>CAGR</th>
+                        <th>Confidence</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody id="marketsTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Raw Data View -->
+        <div class="detailed-view" id="dataView" style="display: none;">
+            <div class="raw-data-container">
+                <h3>Raw API Response</h3>
+                <pre id="rawDataDisplay"></pre>
             </div>
-        </section>
+        </div>
+    </div>
+</section>
 
         <!-- Error Section -->
         <section class="error-section" id="errorSection" style="display: none;">
