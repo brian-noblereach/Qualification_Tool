@@ -1,66 +1,135 @@
-// DOM Elements
-// Replace the elements object at the top of app.js with this corrected version:
-const elements = {
-    // Sections
-    inputSection: document.getElementById('inputSection'),
-    loadingSection: document.getElementById('loadingSection'),
-    resultsSection: document.getElementById('resultsSection'),
-    errorSection: document.getElementById('errorSection'),
-    
-    // Input elements
-    techDescription: document.getElementById('techDescription'),
-    competitiveAnalysis: document.getElementById('competitiveAnalysis'),
-    analyzeBtn: document.getElementById('analyzeBtn'),
-    
-    // Loading elements
-    progressBar: document.getElementById('progressBar'),
-    progressStatus: document.getElementById('progressStatus'),
-    timeElapsed: document.getElementById('timeElapsed'),
-    
-    // Results elements
-    aiScore: document.getElementById('aiScore'),
-    scoreConfidence: document.getElementById('scoreConfidence'),
-    tamValue: document.getElementById('tamValue'),
-    cagrValue: document.getElementById('cagrValue'),
-    marketDesc: document.getElementById('marketDesc'),
-    userScoreSlider: document.getElementById('userScoreSlider'),
-    userScoreDisplay: document.getElementById('userScoreDisplay'),
-    deviationWarning: document.getElementById('deviationWarning'),
-    justificationInput: document.getElementById('justificationInput'),
-    submitScoreBtn: document.getElementById('submitScoreBtn'),
-    scoreComment: document.getElementById('scoreComment'), // Add this
-    deviationIndicator: document.getElementById('deviationIndicator'), // Add this
-    
-    // View toggles
-    viewToggles: document.querySelectorAll('.view-toggle'),
-    summaryView: document.getElementById('summaryView'),
-    detailedView: document.getElementById('detailedView'),
-    evidenceView: document.getElementById('evidenceView'), // Add this
-    rubricView: document.getElementById('rubricView'), // Add this
-    sourcesView: document.getElementById('sourcesView'), // Add this
-    dataView: document.getElementById('dataView'),
-    
-    // New elements for updated layout
-    rubricContext: document.getElementById('rubricContext'), // Add this
-    quickInsights: document.getElementById('quickInsights'), // Add this
-    sourceInfo: document.getElementById('sourceInfo'), // Add this
-    
-    // Detail elements
-    strengthsList: document.getElementById('strengthsList'),
-    limitationsList: document.getElementById('limitationsList'),
-    risksList: document.getElementById('risksList'), // Add this
-    marketAnalysis: document.getElementById('marketAnalysis'),
-    marketsTableBody: document.getElementById('marketsTableBody'),
-    rubricDetails: document.getElementById('rubricDetails'),
-    rawDataDisplay: document.getElementById('rawDataDisplay'),
-    
-    // Error elements
-    errorMessage: document.getElementById('errorMessage'),
-    retryBtn: document.getElementById('retryBtn'),
-    
-    // Export
-    exportBtn: document.getElementById('exportBtn')
+// DOM Elements - Initialize as empty object
+let elements = {};
+
+// State management
+let state = {
+    isAnalyzing: false,
+    startTime: null,
+    progressInterval: null,
+    elapsedInterval: null,
+    currentView: 'summary',
+    lastInputs: {
+        tech: '',
+        competitive: ''
+    }
 };
+
+// Initialize app when DOM is ready
+function init() {
+    // Initialize all elements after DOM is loaded
+    elements = {
+        // Sections
+        inputSection: document.getElementById('inputSection'),
+        loadingSection: document.getElementById('loadingSection'),
+        resultsSection: document.getElementById('resultsSection'),
+        errorSection: document.getElementById('errorSection'),
+        
+        // Input elements
+        techDescription: document.getElementById('techDescription'),
+        competitiveAnalysis: document.getElementById('competitiveAnalysis'),
+        analyzeBtn: document.getElementById('analyzeBtn'),
+        
+        // Loading elements
+        progressBar: document.getElementById('progressBar'),
+        progressStatus: document.getElementById('progressStatus'),
+        timeElapsed: document.getElementById('timeElapsed'),
+        
+        // Results elements
+        aiScore: document.getElementById('aiScore'),
+        scoreConfidence: document.getElementById('scoreConfidence'),
+        tamValue: document.getElementById('tamValue'),
+        cagrValue: document.getElementById('cagrValue'),
+        marketDesc: document.getElementById('marketDesc'),
+        userScoreSlider: document.getElementById('userScoreSlider'),
+        userScoreDisplay: document.getElementById('userScoreDisplay'),
+        deviationWarning: document.getElementById('deviationWarning'),
+        justificationInput: document.getElementById('justificationInput'),
+        submitScoreBtn: document.getElementById('submitScoreBtn'),
+        scoreComment: document.getElementById('scoreComment'),
+        deviationIndicator: document.getElementById('deviationIndicator'),
+        
+        // View toggles
+        viewToggles: document.querySelectorAll('.view-toggle'),
+        summaryView: document.getElementById('summaryView'),
+        detailedView: document.getElementById('detailedView'),
+        evidenceView: document.getElementById('evidenceView'),
+        rubricView: document.getElementById('rubricView'),
+        sourcesView: document.getElementById('sourcesView'),
+        dataView: document.getElementById('dataView'),
+        
+        // New elements for updated layout
+        rubricContext: document.getElementById('rubricContext'),
+        quickInsights: document.getElementById('quickInsights'),
+        sourceInfo: document.getElementById('sourceInfo'),
+        
+        // Detail elements
+        strengthsList: document.getElementById('strengthsList'),
+        limitationsList: document.getElementById('limitationsList'),
+        risksList: document.getElementById('risksList'),
+        marketAnalysis: document.getElementById('marketAnalysis'),
+        marketsTableBody: document.getElementById('marketsTableBody'),
+        rubricDetails: document.getElementById('rubricDetails'),
+        rawDataDisplay: document.getElementById('rawDataDisplay'),
+        
+        // Error elements
+        errorMessage: document.getElementById('errorMessage'),
+        retryBtn: document.getElementById('retryBtn'),
+        
+        // Export
+        exportBtn: document.getElementById('exportBtn')
+    };
+    
+    // Now setup event listeners after elements are initialized
+    setupEventListeners();
+    loadSavedInputs();
+}
+
+// Safe Event Listeners Setup
+function setupEventListeners() {
+    // Only add listeners if elements exist
+    if (elements.analyzeBtn) {
+        elements.analyzeBtn.addEventListener('click', handleAnalyze);
+    }
+    
+    if (elements.userScoreSlider) {
+        elements.userScoreSlider.addEventListener('input', handleScoreSliderChange);
+    }
+    
+    if (elements.submitScoreBtn) {
+        elements.submitScoreBtn.addEventListener('click', handleScoreSubmit);
+    }
+    
+    if (elements.viewToggles && elements.viewToggles.length > 0) {
+        elements.viewToggles.forEach(toggle => {
+            toggle.addEventListener('click', (e) => handleViewToggle(e.target.dataset.view));
+        });
+    }
+    
+    if (elements.retryBtn) {
+        elements.retryBtn.addEventListener('click', handleRetry);
+    }
+    
+    if (elements.exportBtn) {
+        elements.exportBtn.addEventListener('click', handleExport);
+    }
+    
+    if (elements.techDescription) {
+        elements.techDescription.addEventListener('input', saveInputs);
+    }
+    
+    if (elements.competitiveAnalysis) {
+        elements.competitiveAnalysis.addEventListener('input', saveInputs);
+    }
+}
+
+// Make sure DOM is fully loaded before initializing
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    // DOM is already loaded
+    init();
+}
+
 
 // State management
 let state = {
@@ -620,6 +689,3 @@ function loadSavedInputs() {
     if (savedTech) elements.techDescription.value = savedTech;
     if (savedComp) elements.competitiveAnalysis.value = savedComp;
 }
-
-// Initialize app when DOM is ready
-document.addEventListener('DOMContentLoaded', init);
