@@ -292,7 +292,7 @@ async function generatePDF() {
 }
 
 // Mock data for testing (can be toggled on/off)
-const USE_MOCK_DATA = false; // Set to true for testing without API calls
+const USE_MOCK_DATA = true; // Set to true for testing without API calls
 
 function getMockData() {
     return new Promise(resolve => {
