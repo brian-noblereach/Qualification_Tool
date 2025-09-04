@@ -1,4 +1,5 @@
 // DOM Elements
+// Replace the elements object at the top of app.js with this corrected version:
 const elements = {
     // Sections
     inputSection: document.getElementById('inputSection'),
@@ -27,16 +28,27 @@ const elements = {
     deviationWarning: document.getElementById('deviationWarning'),
     justificationInput: document.getElementById('justificationInput'),
     submitScoreBtn: document.getElementById('submitScoreBtn'),
+    scoreComment: document.getElementById('scoreComment'), // Add this
+    deviationIndicator: document.getElementById('deviationIndicator'), // Add this
     
     // View toggles
     viewToggles: document.querySelectorAll('.view-toggle'),
     summaryView: document.getElementById('summaryView'),
     detailedView: document.getElementById('detailedView'),
+    evidenceView: document.getElementById('evidenceView'), // Add this
+    rubricView: document.getElementById('rubricView'), // Add this
+    sourcesView: document.getElementById('sourcesView'), // Add this
     dataView: document.getElementById('dataView'),
+    
+    // New elements for updated layout
+    rubricContext: document.getElementById('rubricContext'), // Add this
+    quickInsights: document.getElementById('quickInsights'), // Add this
+    sourceInfo: document.getElementById('sourceInfo'), // Add this
     
     // Detail elements
     strengthsList: document.getElementById('strengthsList'),
     limitationsList: document.getElementById('limitationsList'),
+    risksList: document.getElementById('risksList'), // Add this
     marketAnalysis: document.getElementById('marketAnalysis'),
     marketsTableBody: document.getElementById('marketsTableBody'),
     rubricDetails: document.getElementById('rubricDetails'),
@@ -223,53 +235,54 @@ function displayResults(data) {
 // New function for cleaner summary card
 function populateSummaryCard(marketData, scoringData) {
     // AI Score section
-    elements.aiScore.textContent = scoringData.score;
-    elements.scoreConfidence.textContent = `Confidence: ${(scoringData.confidence * 100).toFixed(0)}%`;
-    elements.tamValue.textContent = formatCurrency(marketData.primary_market.tam_usd);
-    elements.cagrValue.textContent = formatPercentage(marketData.primary_market.cagr_percent);
-    elements.marketDesc.textContent = marketData.primary_market.description;
+    if (elements.aiScore) elements.aiScore.textContent = scoringData.score;
+    if (elements.scoreConfidence) elements.scoreConfidence.textContent = `Confidence: ${(scoringData.confidence * 100).toFixed(0)}%`;
+    if (elements.tamValue) elements.tamValue.textContent = formatCurrency(marketData.primary_market.tam_usd);
+    if (elements.cagrValue) elements.cagrValue.textContent = formatPercentage(marketData.primary_market.cagr_percent);
+    if (elements.marketDesc) elements.marketDesc.textContent = marketData.primary_market.description;
     
-    // Add rubric context
-    const rubricContext = document.getElementById('rubricContext');
-    rubricContext.innerHTML = `
-        <div class="rubric-reference">
-            <h4>Score ${scoringData.score} Means:</h4>
-            <p>${getRubricDescription(scoringData.rubric_application)}</p>
-            <div class="score-factors">
-                <span class="factor-badge tam-${scoringData.rubric_application.tam_category}">
-                    TAM: ${formatTAMCategory(scoringData.rubric_application.tam_category)}
-                </span>
-                <span class="factor-badge cagr-${scoringData.rubric_application.cagr_category}">
-                    CAGR: ${formatCAGRCategory(scoringData.rubric_application.cagr_category)}
-                </span>
+    // Add rubric context - check if element exists
+    if (elements.rubricContext) {
+        elements.rubricContext.innerHTML = `
+            <div class="rubric-reference">
+                <h4>Score ${scoringData.score} Means:</h4>
+                <p>${getRubricDescription(scoringData.rubric_application)}</p>
+                <div class="score-factors">
+                    <span class="factor-badge tam-${scoringData.rubric_application.tam_category}">
+                        TAM: ${formatTAMCategory(scoringData.rubric_application.tam_category)}
+                    </span>
+                    <span class="factor-badge cagr-${scoringData.rubric_application.cagr_category}">
+                        CAGR: ${formatCAGRCategory(scoringData.rubric_application.cagr_category)}
+                    </span>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    }
     
-    // Quick insights (replacing long lists)
-    const quickInsights = document.getElementById('quickInsights');
-    quickInsights.innerHTML = `
-        <div class="insight-grid">
-            <div class="insight-card strength">
-                <h4>Top Strength</h4>
-                <p>${scoringData.justification.strengths_considered[0] || 'Strong market fundamentals'}</p>
+    // Quick insights - check if element exists
+    if (elements.quickInsights) {
+        elements.quickInsights.innerHTML = `
+            <div class="insight-grid">
+                <div class="insight-card strength">
+                    <h4>Top Strength</h4>
+                    <p>${scoringData.justification.strengths_considered[0] || 'Strong market fundamentals'}</p>
+                </div>
+                <div class="insight-card risk">
+                    <h4>Key Risk</h4>
+                    <p>${scoringData.justification.key_risks[0] || 'Market execution risk'}</p>
+                </div>
+                <div class="insight-card opportunity">
+                    <h4>Opportunity</h4>
+                    <p>${marketData.market_analysis.opportunities[0] || 'Growing market demand'}</p>
+                </div>
             </div>
-            <div class="insight-card risk">
-                <h4>Key Risk</h4>
-                <p>${scoringData.justification.key_risks[0] || 'Market execution risk'}</p>
-            </div>
-            <div class="insight-card opportunity">
-                <h4>Opportunity</h4>
-                <p>${marketData.market_analysis.opportunities[0] || 'Growing market demand'}</p>
-            </div>
-        </div>
-    `;
+        `;
+    }
     
-    // Primary source
+    // Primary source - check if element exists
     const primarySource = marketData.markets.find(m => m.rank === 1);
-    if (primarySource) {
-        const sourceInfo = document.getElementById('sourceInfo');
-        sourceInfo.innerHTML = `
+    if (primarySource && elements.sourceInfo) {
+        elements.sourceInfo.innerHTML = `
             <div class="source-reference">
                 <span class="source-label">Primary Data Source:</span>
                 <a href="${primarySource.source_url}" target="_blank" class="source-link">
@@ -369,28 +382,43 @@ function handleScoreSubmit() {
 // Populate evidence lists
 function populateEvidenceLists(scoringData, marketData) {
     // Strengths
-    elements.strengthsList.innerHTML = '';
-    const strengths = [
-        ...scoringData.justification.strengths_considered,
-        ...marketData.scoring_alignment.strengths
-    ];
-    strengths.forEach(strength => {
-        const li = document.createElement('li');
-        li.textContent = strength;
-        elements.strengthsList.appendChild(li);
-    });
+    if (elements.strengthsList) {
+        elements.strengthsList.innerHTML = '';
+        const strengths = [
+            ...scoringData.justification.strengths_considered,
+            ...marketData.scoring_alignment.strengths
+        ];
+        strengths.forEach(strength => {
+            const li = document.createElement('li');
+            li.textContent = strength;
+            elements.strengthsList.appendChild(li);
+        });
+    }
     
     // Limitations
-    elements.limitationsList.innerHTML = '';
-    const limitations = [
-        ...scoringData.justification.limitations_considered,
-        ...marketData.scoring_alignment.limitations
-    ];
-    limitations.forEach(limitation => {
-        const li = document.createElement('li');
-        li.textContent = limitation;
-        elements.limitationsList.appendChild(li);
-    });
+    if (elements.limitationsList) {
+        elements.limitationsList.innerHTML = '';
+        const limitations = [
+            ...scoringData.justification.limitations_considered,
+            ...marketData.scoring_alignment.limitations
+        ];
+        limitations.forEach(limitation => {
+            const li = document.createElement('li');
+            li.textContent = limitation;
+            elements.limitationsList.appendChild(li);
+        });
+    }
+    
+    // Risks - ADD THIS SECTION
+    if (elements.risksList) {
+        elements.risksList.innerHTML = '';
+        const risks = scoringData.justification.key_risks || [];
+        risks.forEach(risk => {
+            const li = document.createElement('li');
+            li.textContent = risk;
+            elements.risksList.appendChild(li);
+        });
+    }
 }
 
 // Populate markets table
@@ -470,65 +498,18 @@ function handleScoreSliderChange(e) {
     const aiScore = parseInt(elements.aiScore.textContent);
     const deviation = calculateDeviation(aiScore, userScore);
     
+    // Use deviationIndicator instead of deviationWarning
     if (deviation > 2) {
-        elements.deviationWarning.style.display = 'flex';
+        if (elements.deviationIndicator) {
+            elements.deviationIndicator.style.display = 'flex';
+        }
     } else {
-        elements.deviationWarning.style.display = 'none';
-        elements.justificationInput.value = '';
+        if (elements.deviationIndicator) {
+            elements.deviationIndicator.style.display = 'none';
+        }
     }
 }
 
-// Handle score submission
-function handleScoreSubmit() {
-    const userScore = parseInt(elements.userScoreSlider.value);
-    const aiScore = parseInt(elements.aiScore.textContent);
-    const deviation = calculateDeviation(aiScore, userScore);
-    const justification = elements.justificationInput.value.trim();
-    
-    if (deviation > 2 && !justification) {
-        alert('Please provide justification for the significant deviation from the AI score.');
-        elements.justificationInput.focus();
-        return;
-    }
-    
-    // Save user score
-    currentAnalysis.userScore = userScore;
-    currentAnalysis.justification = justification;
-    
-    // Show confirmation
-    const message = `Score submitted: ${userScore}/9` + 
-                   (justification ? `\nJustification: ${justification}` : '');
-    
-    // Create a temporary success message
-    const successMsg = document.createElement('div');
-    successMsg.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem 3rem;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        z-index: 1000;
-        text-align: center;
-    `;
-    successMsg.innerHTML = `
-        <h3 style="margin-bottom: 1rem;">✓ Score Submitted Successfully</h3>
-        <p>${message}</p>
-    `;
-    document.body.appendChild(successMsg);
-    
-    setTimeout(() => {
-        document.body.removeChild(successMsg);
-    }, 3000);
-    
-    // Disable further changes
-    elements.userScoreSlider.disabled = true;
-    elements.submitScoreBtn.disabled = true;
-    elements.submitScoreBtn.textContent = 'Score Submitted';
-}
 
 // Handle view toggle
 function handleViewToggle(view) {
@@ -538,20 +519,29 @@ function handleViewToggle(view) {
     });
     
     // Hide all views
-    elements.summaryView.style.display = 'none';
-    elements.detailedView.style.display = 'none';
-    elements.dataView.style.display = 'none';
+    if (elements.summaryView) elements.summaryView.style.display = 'none';
+    if (elements.evidenceView) elements.evidenceView.style.display = 'none';
+    if (elements.rubricView) elements.rubricView.style.display = 'none';
+    if (elements.sourcesView) elements.sourcesView.style.display = 'none';
+    if (elements.detailedView) elements.detailedView.style.display = 'none';
+    if (elements.dataView) elements.dataView.style.display = 'none';
     
     // Show selected view
     switch(view) {
         case 'summary':
-            elements.summaryView.style.display = 'block';
+            if (elements.summaryView) elements.summaryView.style.display = 'block';
             break;
         case 'detailed':
-            elements.detailedView.style.display = 'block';
+            if (elements.evidenceView) elements.evidenceView.style.display = 'block';
+            break;
+        case 'rubric':
+            if (elements.rubricView) elements.rubricView.style.display = 'block';
+            break;
+        case 'sources':
+            if (elements.sourcesView) elements.sourcesView.style.display = 'block';
             break;
         case 'data':
-            elements.dataView.style.display = 'block';
+            if (elements.dataView) elements.dataView.style.display = 'block';
             break;
     }
     

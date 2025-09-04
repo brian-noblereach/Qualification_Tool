@@ -893,3 +893,6 @@ body {
         grid-template-columns: 1fr;
     }
 }
+.evidence-list.risks li {
+    border-left-color: var(--danger-color);
+}
