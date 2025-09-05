@@ -136,19 +136,30 @@ const AssessmentComponent = {
     
     // Load competitive analysis results
     loadCompetitiveResults(data) {
-        const assessment = StateManager.getAssessment('competitive');
-        const formattedData = CompetitiveAPI.formatForDisplay(
-            data.gradedAnalysis, 
-            data.competitiveAnalysisText,
-            data.competitiveAnalysisObj // <-- prefer structured JSON
-        );
+        // Support two cases:
+        // 1) Live run: { gradedAnalysis, competitiveAnalysisText, competitiveAnalysisObj }
+        // 2) Restore-from-state: { gradedAnalysis: <already formatted object>, isFormatted: true }
+        let formattedData;
+        
+        const candidate = data?.gradedAnalysis;
+        const isAlreadyFormatted = !!(candidate && candidate.competitorCount && candidate.marketLeaders);
+        
+        if (isAlreadyFormatted || data?.isFormatted) {
+            formattedData = candidate; // use as-is
+        } else {
+            formattedData = CompetitiveAPI.formatForDisplay(
+                data.gradedAnalysis, 
+                data.competitiveAnalysisText,
+                data.competitiveAnalysisObj
+            );
+        }
         
         // Update state
         StateManager.setAssessmentData('competitive', {
             status: 'complete',
             aiScore: formattedData.score,
             data: formattedData,
-            rawResponse: data.rawResponse
+            rawResponse: data.rawResponse || null
         });
         
         // Set AI score
@@ -160,7 +171,7 @@ const AssessmentComponent = {
         document.getElementById('competitiveIntensity').textContent = 
             Formatters.competitiveIntensity(formattedData.competitiveIntensity);
 
-        // NEW: Competitive confidence metric (matches market style)
+        // Competitive confidence metric (matches market style)
         const compConfEl = document.getElementById('competitiveConfidence');
         if (compConfEl && formattedData.confidence != null) {
             compConfEl.textContent = Formatters.confidence(formattedData.confidence);
@@ -497,12 +508,11 @@ const AssessmentComponent = {
                 this.switchAssessment('competitive');
             }
             
-            // Restore competitive if available
+            // Restore competitive if available (pass formatted data directly)
             if (state.assessments.competitive.data) {
                 this.loadCompetitiveResults({
-                    gradedAnalysis: state.assessments.competitive.data, // we store formatted data as "data"; here we only need fields used in formatForDisplay's 1st arg if restored differently.
-                    competitiveAnalysisText: state.competitiveAnalysisText || '',
-                    competitiveAnalysisObj: null,
+                    gradedAnalysis: state.assessments.competitive.data,
+                    isFormatted: true,
                     rawResponse: state.assessments.competitive.rawResponse
                 });
             }
