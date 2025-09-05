@@ -76,14 +76,20 @@ const CompetitiveAPI = {
             const gradedAnalysis = typeof gradedAnalysisRaw === 'string' 
                 ? JSON.parse(gradedAnalysisRaw) 
                 : gradedAnalysisRaw;
+
+            // Parse the structured competitive analysis (out-6 is JSON per contract)
+            const competitiveAnalysisObj = typeof competitiveAnalysisText === 'string'
+                ? JSON.parse(competitiveAnalysisText)
+                : competitiveAnalysisText;
             
-            // Validate required fields
+            // Validate required fields we rely on downstream
             if (!gradedAnalysis.score || !gradedAnalysis.competitor_count) {
                 throw new Error('Missing required fields in competitive analysis');
             }
             
             return {
-                competitiveAnalysisText, // This will be used as input for market analysis
+                competitiveAnalysisText,     // original (string)
+                competitiveAnalysisObj,      // parsed object (preferred)
                 gradedAnalysis,
                 rawResponse: data
             };
@@ -95,10 +101,28 @@ const CompetitiveAPI = {
     },
     
     // Format the graded analysis for display
-    formatForDisplay(gradedAnalysis, competitiveAnalysisText) {
-        // Extract detailed competitor info from the competitive analysis text
-        const detailedCompetitors = this.extractDetailedCompetitors(competitiveAnalysisText);
-        
+    formatForDisplay(gradedAnalysis, competitiveAnalysisText, competitiveAnalysisObj = null) {
+        // Prefer parsed object; fall back by parsing the text
+        let parsed = competitiveAnalysisObj;
+        if (!parsed) {
+            try {
+                parsed = JSON.parse(competitiveAnalysisText);
+            } catch (e) {
+                parsed = null;
+            }
+        }
+
+        // Build detailed competitors safely from structured JSON if available
+        const detailedCompetitors = this.buildCompetitorsFromJson(parsed, gradedAnalysis);
+
+        // Confidence should come from data_quality.confidence_level (not heuristic)
+        const confidence = parsed?.data_quality?.confidence_level ?? null;
+
+        // Also surface sources_used for the Sources tab
+        const sourcesUsed = Array.isArray(parsed?.data_quality?.sources_used)
+            ? parsed.data_quality.sources_used
+            : [];
+
         return {
             score: gradedAnalysis.score,
             justification: gradedAnalysis.score_justification,
@@ -113,90 +137,65 @@ const CompetitiveAPI = {
             keyRisks: gradedAnalysis.key_risk_factors || [],
             opportunities: gradedAnalysis.differentiation_opportunities || [],
             rubricMatch: gradedAnalysis.rubric_match_explanation,
-            confidence: this.calculateConfidence(gradedAnalysis),
-            detailedCompetitors: detailedCompetitors,
+            confidence,                      // <- from out-6.data_quality.confidence_level
+            sourcesUsed,                     // <- list of source strings for Competitive Sources view
+            detailedCompetitors,             // <- derived from structured JSON
             rawAnalysisText: competitiveAnalysisText
         };
     },
-    
-    // Extract detailed competitor information from analysis text
-    extractDetailedCompetitors(analysisText) {
-        if (!analysisText) return [];
-        
-        // Parse the competitive analysis to extract competitor details
-        // This is a simplified extraction - in production you'd want more robust parsing
+
+    // Build competitor objects from structured JSON (preferred path)
+    buildCompetitorsFromJson(parsed, gradedAnalysis) {
         const competitors = [];
-        
-        try {
-            // Look for competitor sections in the text
-            const lines = analysisText.split('\n');
-            let currentCompetitor = null;
-            
-            lines.forEach(line => {
-                // Check for company name patterns
-                if (line.includes('company_name":') || line.includes('Company:')) {
-                    const name = line.split(':')[1]?.trim().replace(/[",]/g, '');
-                    if (name) {
-                        currentCompetitor = { 
-                            name, 
-                            description: '', 
-                            size: 'Unknown',
-                            products: [],
-                            strengths: [],
-                            weaknesses: [],
-                            url: ''
-                        };
-                        competitors.push(currentCompetitor);
-                    }
-                } else if (currentCompetitor) {
-                    // Extract other details
-                    if (line.includes('size_category":') || line.includes('Size:')) {
-                        currentCompetitor.size = line.split(':')[1]?.trim().replace(/[",]/g, '');
-                    } else if (line.includes('product_description":') || line.includes('Description:')) {
-                        currentCompetitor.description = line.split(':')[1]?.trim().replace(/[",]/g, '');
-                    } else if (line.includes('strengths":')) {
-                        currentCompetitor.strengths.push(line.split(':')[1]?.trim().replace(/[",\[\]]/g, ''));
-                    } else if (line.includes('weaknesses":')) {
-                        currentCompetitor.weaknesses.push(line.split(':')[1]?.trim().replace(/[",\[\]]/g, ''));
-                    }
-                }
-            });
-            
-            // If parsing fails or returns nothing, create sample data from market leaders
-            if (competitors.length === 0 && gradedAnalysis.market_leaders) {
-                gradedAnalysis.market_leaders.forEach(leader => {
-                    competitors.push({
-                        name: leader,
-                        description: 'Market leader in the space',
-                        size: 'Large',
-                        products: ['Core platform/solution'],
-                        strengths: ['Market position', 'Resources', 'Brand recognition'],
-                        weaknesses: ['Legacy technology', 'Slower innovation'],
-                        url: `https://www.google.com/search?q=${encodeURIComponent(leader)}`
-                    });
+
+        if (parsed && Array.isArray(parsed.competitors)) {
+            parsed.competitors.forEach(c => {
+                const name = (c.company_name || '').trim();
+                // Skip placeholders like "{something}"
+                const looksLikePlaceholder = /^\{.*\}$/.test(name);
+                if (!name || looksLikePlaceholder) return;
+
+                const size = (c.size_category || 'Unknown').trim();
+                const description = (c.product_description || c.product_name || '').trim();
+                const products = c.product_name ? [c.product_name] : [];
+                const strengths = Array.isArray(c.strengths) ? c.strengths : [];
+                const weaknesses = Array.isArray(c.weaknesses) ? c.weaknesses : [];
+
+                competitors.push({
+                    name,
+                    description,
+                    size,
+                    products,
+                    strengths,
+                    weaknesses,
+                    url: '' // We no longer surface per-company URLs; Sources tab will use sources_used.
                 });
-            }
-            
-        } catch (error) {
-            console.error('Error extracting competitor details:', error);
+            });
         }
-        
-        return competitors.slice(0, 10); // Limit to top 10 for display
+
+        // Fallback: if nothing parsed, use market leaders from gradedAnalysis (strings only)
+        if (competitors.length === 0 && gradedAnalysis?.market_leaders?.length) {
+            gradedAnalysis.market_leaders.forEach(leader => {
+                competitors.push({
+                    name: leader,
+                    description: 'Market leader in the space',
+                    size: 'Large',
+                    products: ['Core platform/solution'],
+                    strengths: ['Market position', 'Resources', 'Brand recognition'],
+                    weaknesses: ['Legacy technology', 'Slower innovation'],
+                    url: ''
+                });
+            });
+        }
+
+        // Limit to top 10 for display
+        return competitors.slice(0, 10);
     },
     
-    // Calculate confidence score based on data quality
-    calculateConfidence(gradedAnalysis) {
-        // Basic confidence calculation based on completeness of data
-        let confidence = 0.5; // Base confidence
-        
-        // Add confidence based on data completeness
-        if (gradedAnalysis.competitor_count?.total > 0) confidence += 0.1;
-        if (gradedAnalysis.market_leaders?.length > 0) confidence += 0.1;
-        if (gradedAnalysis.key_risk_factors?.length > 0) confidence += 0.1;
-        if (gradedAnalysis.differentiation_opportunities?.length > 0) confidence += 0.1;
-        if (gradedAnalysis.competitive_intensity) confidence += 0.1;
-        
-        return Math.min(confidence, 1.0);
+    // (Deprecated) Heuristic confidence calculator – kept for backward compatibility but unused.
+    calculateConfidence(/* gradedAnalysis */) {
+        // We now rely on out-6.data_quality.confidence_level provided by the API.
+        return null;
     },
     
     // Get the appropriate rubric description for a score

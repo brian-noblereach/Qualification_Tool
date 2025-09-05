@@ -139,7 +139,8 @@ const AssessmentComponent = {
         const assessment = StateManager.getAssessment('competitive');
         const formattedData = CompetitiveAPI.formatForDisplay(
             data.gradedAnalysis, 
-            data.competitiveAnalysisText
+            data.competitiveAnalysisText,
+            data.competitiveAnalysisObj // <-- prefer structured JSON
         );
         
         // Update state
@@ -158,6 +159,12 @@ const AssessmentComponent = {
         document.getElementById('marketLeaderCount').textContent = formattedData.marketLeaders.length;
         document.getElementById('competitiveIntensity').textContent = 
             Formatters.competitiveIntensity(formattedData.competitiveIntensity);
+
+        // NEW: Competitive confidence metric (matches market style)
+        const compConfEl = document.getElementById('competitiveConfidence');
+        if (compConfEl && formattedData.confidence != null) {
+            compConfEl.textContent = Formatters.confidence(formattedData.confidence);
+        }
         
         // Update AI reasoning
         document.getElementById('competitiveAiReasoning').textContent = formattedData.justification;
@@ -171,7 +178,7 @@ const AssessmentComponent = {
         // Detailed view with competitor details
         this.loadCompetitiveDetailedView(formattedData);
         
-        // Sources instead of data quality
+        // Sources view now uses data_quality.sources_used
         this.loadCompetitiveSources(formattedData);
     },
     
@@ -208,7 +215,7 @@ const AssessmentComponent = {
                 <div class="competitor-detail-card">
                     <div class="competitor-header">
                         <h4>${index + 1}. ${comp.name}</h4>
-                        <span class="size-badge size-${comp.size.toLowerCase()}">${comp.size}</span>
+                        <span class="size-badge size-${(comp.size || 'Unknown').toLowerCase()}">${comp.size || 'Unknown'}</span>
                     </div>
                     <p class="competitor-description">${comp.description || 'Leading competitor in the market'}</p>
                     ${comp.products && comp.products.length > 0 ? `
@@ -243,62 +250,38 @@ const AssessmentComponent = {
             Formatters.listToHTML(data.opportunities);
     },
     
-    // Load competitive sources (replacing data quality)
+    // Load competitive sources (now uses data_quality.sources_used)
     loadCompetitiveSources(data) {
         const sourcesView = document.getElementById('competitiveSourcesView');
         if (!sourcesView) return;
-        
-        // Create a sources table similar to market sources
+
+        const sources = Array.isArray(data.sourcesUsed) ? data.sourcesUsed : [];
+
+        // Build a simple sources table
         let sourcesHTML = `
-            <table class="sources-table">
-                <thead>
-                    <tr>
-                        <th>Competitor</th>
-                        <th>Size</th>
-                        <th>Focus Area</th>
-                        <th>More Info</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        
-        // Add competitor rows
-        if (data.detailedCompetitors && data.detailedCompetitors.length > 0) {
-            data.detailedCompetitors.forEach(comp => {
-                sourcesHTML += `
-                    <tr>
-                        <td>${comp.name}</td>
-                        <td>${comp.size}</td>
-                        <td>${Formatters.truncate(comp.description || 'Competitive solution', 100)}</td>
-                        <td><a href="${comp.url || `https://www.google.com/search?q=${encodeURIComponent(comp.name)}`}" target="_blank">Search</a></td>
-                    </tr>
-                `;
-            });
-        } else {
-            // Fallback with market leaders
-            data.marketLeaders.forEach(leader => {
-                sourcesHTML += `
-                    <tr>
-                        <td>${leader}</td>
-                        <td>Large</td>
-                        <td>Market leader in the space</td>
-                        <td><a href="https://www.google.com/search?q=${encodeURIComponent(leader)}" target="_blank">Search</a></td>
-                    </tr>
-                `;
-            });
-        }
-        
-        sourcesHTML += `
-                </tbody>
-            </table>
-            <div class="sources-note">
-                <p><strong>Analysis Confidence:</strong> ${Formatters.confidence(data.confidence)}</p>
-                <p class="data-quality-note">
-                    Data compiled from competitive landscape analysis. Links provide starting points for further research.
-                </p>
+            <div class="sources-block">
+                <h4>Information Sources</h4>
+                <table class="sources-table">
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sources.length
+                            ? sources.map(s => `<tr><td>${Formatters.escapeHTML(s)}</td></tr>`).join('')
+                            : `<tr><td>No sources reported</td></tr>`}
+                    </tbody>
+                </table>
+                <div class="sources-note">
+                    <p><strong>Analysis Confidence:</strong> ${data.confidence != null ? Formatters.confidence(data.confidence) : '-'}</p>
+                    <p class="data-quality-note">
+                        Sources used are provided by the competitive analysis engine for this assessment.
+                    </p>
+                </div>
             </div>
         `;
-        
+
         sourcesView.innerHTML = sourcesHTML;
     },
     
@@ -517,7 +500,9 @@ const AssessmentComponent = {
             // Restore competitive if available
             if (state.assessments.competitive.data) {
                 this.loadCompetitiveResults({
-                    gradedAnalysis: state.assessments.competitive.data,
+                    gradedAnalysis: state.assessments.competitive.data, // we store formatted data as "data"; here we only need fields used in formatForDisplay's 1st arg if restored differently.
+                    competitiveAnalysisText: state.competitiveAnalysisText || '',
+                    competitiveAnalysisObj: null,
                     rawResponse: state.assessments.competitive.rawResponse
                 });
             }

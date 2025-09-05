@@ -131,7 +131,7 @@ const App = {
     
     // Process analysis results
     processResults(competitiveResult, marketResult) {
-        // Load competitive results
+        // Load competitive results (now includes parsed object)
         AssessmentComponent.loadCompetitiveResults(competitiveResult);
         
         // Load market results
@@ -246,13 +246,20 @@ const App = {
         sections.forEach(s => {
             const el = document.getElementById(`${s}Section`);
             if (el) {
-                el.style.display = s === section ? 'block' : 'none';
-                
-                // Special handling for assessment section
-                if (s === 'assessment' && section === 'assessment') {
-                    el.style.display = 'flex';
-                    el.style.flexDirection = 'column';
-                    el.style.flex = '1';
+                // Preserve layout semantics: loading should remain a centered flex container
+                if (s === section) {
+                    if (s === 'loading') {
+                        el.style.display = 'flex'; // keep flex to center the modal
+                    } else if (s === 'assessment') {
+                        // Special handling for assessment section
+                        el.style.display = 'flex';
+                        el.style.flexDirection = 'column';
+                        el.style.flex = '1';
+                    } else {
+                        el.style.display = 'block';
+                    }
+                } else {
+                    el.style.display = 'none';
                 }
             }
         });
