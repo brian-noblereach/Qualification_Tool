@@ -584,8 +584,8 @@
     color: var(--danger);
 }
 
-.size-badge.size-mid-size,
-.size-badge.size-midsize {
+.size-badge.size-midsize,
+.size-badge.size-mid-size {
     background: var(--warning-light);
     color: var(--warning);
 }
@@ -623,6 +623,12 @@
     letter-spacing: 0.05em;
 }
 
+.competitor-section p {
+    font-size: 0.813rem;
+    color: var(--gray-700);
+    line-height: 1.5;
+}
+
 .competitor-section ul {
     list-style: none;
     padding: 0;
@@ -642,6 +648,49 @@
     position: absolute;
     left: 0;
     color: var(--primary);
+}
+
+/* Competitor Meta Information */
+.competitor-meta {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--gray-100);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.meta-item {
+    font-size: 0.75rem;
+    color: var(--gray-600);
+    background: var(--gray-50);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.meta-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.meta-badge.position-leader {
+    background: var(--success);
+    color: white;
+}
+
+.meta-badge.position-challenger {
+    background: var(--primary);
+    color: white;
+}
+
+.meta-badge.position-niche,
+.meta-badge.position-emerging {
+    background: var(--info);
+    color: white;
 }
 
 /* Sources Note */

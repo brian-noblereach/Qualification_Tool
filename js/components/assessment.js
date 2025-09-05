@@ -318,13 +318,19 @@ const AssessmentComponent = {
         // Set AI score
         RubricComponent.setAiScore('market', formattedData.score);
         
-        // Update metrics
+        // Update metrics including confidence
         document.getElementById('tamValue').textContent = 
             Formatters.currency(formattedData.primaryMarket.tam);
         document.getElementById('cagrValue').textContent = 
             Formatters.percentage(formattedData.primaryMarket.cagr);
         document.getElementById('marketDesc').textContent = 
             formattedData.primaryMarket.description;
+            
+        // Add confidence display
+        const marketConfidenceEl = document.getElementById('marketConfidence');
+        if (marketConfidenceEl) {
+            marketConfidenceEl.textContent = Formatters.confidence(formattedData.confidence);
+        }
         
         // Update AI reasoning
         document.getElementById('marketAiReasoning').textContent = 
