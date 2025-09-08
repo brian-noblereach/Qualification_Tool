@@ -173,6 +173,7 @@ const AssessmentComponent = {
             
             // Set AI score in rubric
             RubricComponent.setAiScore('competitive', formattedData.score);
+			this.updateAssessmentTabScore('competitive');
             
             // Update displays
             this.updateCompetitiveDisplays(formattedData);
@@ -301,7 +302,8 @@ const AssessmentComponent = {
             
             // Set AI score in rubric
             RubricComponent.setAiScore('market', formattedData.score);
-            
+            this.updateAssessmentTabScore('market');
+
             // Update displays
             this.updateMarketDisplays(formattedData);
             
@@ -567,6 +569,7 @@ const AssessmentComponent = {
                 // Restore user assessment if submitted
                 if (state.assessments.competitive.submitted) {
                     RubricComponent.setScore('competitive', state.assessments.competitive.userScore);
+					this.updateAssessmentTabScore('competitive')
                     const commentEl = document.getElementById('competitiveScoreComment');
                     if (commentEl) {
                         commentEl.value = state.assessments.competitive.justification;
@@ -585,6 +588,7 @@ const AssessmentComponent = {
                 // Restore user assessment if submitted
                 if (state.assessments.market.submitted) {
                     RubricComponent.setScore('market', state.assessments.market.userScore);
+					this.updateAssessmentTabScore('market');
                     const commentEl = document.getElementById('marketScoreComment');
                     if (commentEl) {
                         commentEl.value = state.assessments.market.justification;
@@ -601,6 +605,31 @@ const AssessmentComponent = {
             }
         }
     },
+	
+	updateAssessmentTabScore(assessment){
+	  try{
+		const st = StateManager.getAssessment(assessment);
+		if(!st) return;
+
+		const display = Number.isInteger(st.userScore) ? st.userScore : st.aiScore;
+		const tab = document.querySelector(`.assessment-tab[data-assessment="${assessment}"]`);
+		const chip = document.getElementById(`${assessment}TabScore`);
+		if(!tab || !chip) return;
+
+		if(display == null){
+		  chip.textContent = '';
+		  tab.style.removeProperty('--tab-accent');
+		  chip.style.background = 'var(--gray-400)';
+		  return;
+		}
+
+		const sd = Formatters.scoreWithColor(display);   // returns {value,color,label}
+		chip.textContent = display;
+		chip.style.background = sd.color;
+		tab.style.setProperty('--tab-accent', sd.color);
+	  }catch(e){ console.warn('Tab score update failed', e); }
+	},
+
     
     // Cleanup component
     cleanup() {

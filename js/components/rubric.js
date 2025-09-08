@@ -443,6 +443,14 @@ const RubricComponent = {
             if (elements.tabScore) {
                 elements.tabScore.textContent = score;
             }
+			
+			if (elements.tabScore) {
+			  const sd = Formatters.scoreWithColor(score);
+			  elements.tabScore.style.background = sd.color;
+			}
+			if (window.AssessmentComponent && AssessmentComponent.updateAssessmentTabScore) {
+			  AssessmentComponent.updateAssessmentTabScore(assessmentType);
+			}
             
             // Mark tab as completed
             const tab = document.querySelector(`.assessment-tab[data-assessment="${assessmentType}"]`);
