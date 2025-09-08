@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Venture Assessment Platform</title>
-	<link rel="stylesheet" href="css/styles.css"/>
-	<link rel="stylesheet" href="css/components.css"/>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 </head>
 <body>
@@ -15,59 +15,85 @@
       <h1 id="companyName">Venture Assessment Platform</h1>
       <div id="companyMeta">Enter technology description to begin assessment</div>
     </div>
-    <div class="header-actions">
-      <button id="newAnalysisBtn" class="btn btn-secondary" style="display:none;">New Analysis</button>
-      <button id="exportBtn" class="btn btn-primary" style="display:none;">Export Report</button>
-    </div>
+	<div class="header-actions">
+	  <button id="newAnalysisBtn" class="btn btn-secondary" style="display:none;">
+		<span class="btn-icon">↺</span> New Analysis
+	  </button>
+	  <button id="exportBtn" class="btn btn-primary" style="display:none;" aria-label="Export Report">
+		<span class="btn-icon">📄</span> Export Report
+	  </button>
+	</div>
   </header>
 
   <!-- Input Section -->
-  <section id="inputSection" class="input-section">
-    <div class="card">
-      <h2>Technology Description</h2>
-      <textarea id="techDescription" placeholder="Describe the technology, its use case, and context..."></textarea>
-      <div class="actions">
-        <button id="analyzeBtn" class="btn btn-primary">Analyze</button>
-      </div>
-    </div>
-  </section>
+	<section id="inputSection" class="input-section">
+	  <div class="card">
+		<h2>Technology Description</h2>
+		<textarea 
+		  id="techDescription" 
+		  placeholder="Describe the technology, its use case, and context..."
+		  minlength="20"
+		  aria-label="Technology description"
+		  aria-describedby="techDescriptionHint"
+		></textarea>
+		<div id="techDescriptionHint" class="field-helper">
+		  Minimum 20 characters. Be as detailed as possible for better analysis.
+		</div>
+		<div class="actions">
+		  <button id="analyzeBtn" class="btn btn-primary" aria-label="Start Analysis">
+			Analyze
+		  </button>
+		</div>
+	  </div>
+	</section>
 
   <!-- Loading Section (must remain flex to stay centered) -->
-  <section id="loadingSection" class="loading-section" style="display:none;">
-    <div class="loading-modal">
-      <div class="loading-header">
-        <div class="phase-indicators">
-          <div class="phase-indicator" data-phase="competitive">Competitive</div>
-          <div class="phase-indicator" data-phase="market">Market</div>
-        </div>
-        <h3 id="loadingTitle">Preparing analysis…</h3>
-      </div>
-      <div class="loading-body">
-        <div class="progress">
-          <div id="progressBar" class="progress-bar"></div>
-        </div>
-        <div class="status">
-          <span id="progressStatus">Initializing…</span>
-          <span id="timeElapsed">0:00</span>
-        </div>
-      </div>
-      <div class="loading-footer">
-        <button id="retryBtn" class="btn btn-secondary">Retry</button>
-      </div>
-    </div>
-  </section>
+	<section id="loadingSection" class="loading-section" style="display:none;">
+	  <div class="loading-modal">
+		<div class="loading-header">
+		  <div class="phase-indicators">
+			<div class="phase-indicator" data-phase="competitive">
+			  <span class="phase-dot"></span>
+			  Competitive
+			</div>
+			<div class="phase-connector"></div>
+			<div class="phase-indicator" data-phase="market">
+			  <span class="phase-dot"></span>
+			  Market
+			</div>
+		  </div>
+		  <h3 id="loadingTitle">Preparing analysis…</h3>
+		</div>
+		<div class="loading-body">
+		  <div class="spinner"></div>
+		  <div class="progress-bar-container">
+			<div id="progressBar" class="progress-bar"></div>
+		  </div>
+		  <div class="status">
+			<span id="progressStatus">Initializing…</span>
+			<span id="timeElapsed">0:00</span>
+		  </div>
+		</div>
+	  </div>
+	</section>
 
   <!-- Error Section -->
-  <section id="errorSection" class="error-section" style="display:none;">
-    <div class="card">
-      <h2>Something went wrong</h2>
-      <p id="errorMessage"></p>
-      <pre id="errorDetails" style="display:none;"></pre>
-      <div class="actions">
-        <button id="retryBtn" class="btn btn-secondary">Retry</button>
-      </div>
-    </div>
-  </section>
+	<section id="errorSection" class="error-section" style="display:none;">
+	  <div class="error-content">
+		<div class="card">
+		  <h2>⚠ Something went wrong</h2>
+		  <p id="errorMessage"></p>
+		  <details id="errorDetailsWrapper" style="display:none;">
+			<summary>Technical Details</summary>
+			<pre id="errorDetails"></pre>
+		  </details>
+		  <div class="actions">
+			<button id="retryBtn" class="btn btn-secondary">Retry Analysis</button>
+			<button onclick="App.startNewAnalysis()" class="btn btn-primary">Start Over</button>
+		  </div>
+		</div>
+	  </div>
+	</section>
 
   <!-- Assessment Section -->
   <section id="assessmentSection" class="assessment-section" style="display:none;">
@@ -208,27 +234,39 @@
           </div>
         </div>
 
-        <div class="two-col">
-          <div class="card">
-            <h3>AI Reasoning</h3>
-            <p id="marketAiReasoning">-</p>
-          </div>
-          <div class="card">
-            <h3>Rubric</h3>
-            <div id="marketRubricDescription"></div>
-            <div class="rubric-controls">
-              <div id="marketRubricTable" class="rubric-table"></div>
-              <div class="slider-row">
-                <input id="marketUserScoreSlider" type="range" min="1" max="9" value="5"/>
-                <span id="marketUserScoreDisplay">5</span>
-              </div>
-              <textarea id="marketScoreComment" placeholder="Add your justification…"></textarea>
-              <div class="deviation" id="marketDeviationWarning" style="display:none;"></div>
-              <button id="marketSubmitBtn" class="btn btn-primary">Submit Assessment</button>
-            </div>
-          </div>
-        </div>
-      </div>
+		 <div class="two-col">
+			<div class="card">
+			  <h3>AI Reasoning</h3>
+			  <p id="marketAiReasoning">-</p>
+			</div>
+			<div class="card">
+			  <h3>Rubric</h3>
+			  <div id="marketRubricDescription"></div>
+			  <div class="rubric-controls">
+				<div id="marketRubricTable" class="rubric-table"></div>
+				<div class="slider-row">
+				  <input id="marketUserScoreSlider" type="range" min="1" max="9" value="5"/>
+				  <span id="marketUserScoreDisplay">5</span>
+				</div>
+				<textarea id="marketScoreComment" placeholder="Add your justification…"></textarea>
+				<div class="deviation" id="marketDeviationWarning" style="display:none;"></div>
+				<button id="marketSubmitBtn" class="btn btn-primary">Submit Assessment</button>
+			  </div>
+			</div>
+		  </div>
+		  
+		  <!-- Add missing summary lists -->
+		  <div class="two-col">
+			<div class="card">
+			  <h3>Key Strengths</h3>
+			  <ul id="marketStrengthsList" class="formatted-list"></ul>
+			</div>
+			<div class="card">
+			  <h3>Key Limitations</h3>
+			  <ul id="marketLimitationsList" class="formatted-list"></ul>
+			</div>
+		  </div>
+		</div>
 
       <!-- Market Detailed View -->
       <div id="marketDetailedView" style="display:none;">
@@ -313,4 +351,3 @@
   <script src="js/app.js"></script>
 </body>
 </html>
-

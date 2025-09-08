@@ -235,8 +235,38 @@ body {
     background: rgba(255,255,255,0.3);
 }
 
+.btn-primary:disabled,
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.btn-primary.loading,
+.btn-secondary.loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn-primary.loading::after,
+.btn-secondary.loading::after {
+    content: "";
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    top: 50%;
+    left: 50%;
+    margin-left: -0.5rem;
+    margin-top: -0.5rem;
+    border: 2px solid white;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
 .btn-icon {
     font-size: 1.125rem;
+    margin-right: 0.25rem;
 }
 
 /* Input Section */
@@ -342,14 +372,7 @@ body {
     box-shadow: var(--shadow-xl);
 }
 
-.spinner {
-    width: 3rem;
-    height: 3rem;
-    border: 3px solid var(--gray-200);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    margin: 0 auto 1.5rem;
-    animation: spin 1s linear infinite;
+
 }
 
 @keyframes spin {
@@ -370,6 +393,28 @@ body {
 
 /* Loading Phase Indicators */
 .loading-phase {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.loading-modal {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: var(--shadow-xl);
+    max-width: 500px;
+    width: 90%;
+}
+
+.loading-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.phase-indicators {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -410,6 +455,25 @@ body {
     width: 2rem;
     height: 2px;
     background: var(--gray-300);
+    transition: background var(--transition-base);
+}
+
+.phase-indicator.complete + .phase-connector {
+    background: var(--success);
+}
+
+.loading-body {
+    text-align: center;
+}
+
+.spinner {
+    width: 3rem;
+    height: 3rem;
+    border: 3px solid var(--gray-200);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    margin: 0 auto 1.5rem;
+    animation: spin 1s linear infinite;
 }
 
 .progress-bar-container {
@@ -425,6 +489,16 @@ body {
     height: 100%;
     background: var(--primary-gradient);
     transition: width var(--transition-slow);
+    border-radius: 0.25rem;
+}
+
+.status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    color: var(--gray-600);
 }
 
 .status-text {
@@ -454,32 +528,48 @@ body {
 
 /* Error Section */
 .error-section {
-    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 2rem;
+    min-height: 60vh;
 }
 
 .error-content {
-    text-align: center;
-    max-width: 500px;
+    max-width: 600px;
+    width: 100%;
 }
 
 .error-content h2 {
     color: var(--danger);
     margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-.error-details {
+#errorDetailsWrapper {
     margin-top: 1rem;
     padding: 1rem;
     background: var(--gray-50);
     border-radius: 0.5rem;
-    text-align: left;
-    font-size: 0.875rem;
-    color: var(--gray-600);
+}
+
+#errorDetailsWrapper summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+#errorDetails {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
     font-family: monospace;
+    overflow-x: auto;
+    color: var(--gray-600);
 }
 
 /* Summary Section */
@@ -593,6 +683,52 @@ body {
     text-align: center;
 }
 
+/* ============================================
+   3. EMPTY STATES AND VALIDATION
+   ============================================ */
+
+.no-data {
+    opacity: 0.6;
+    font-style: italic;
+    color: var(--gray-500);
+}
+
+.empty-list {
+    opacity: 0.7;
+}
+
+.empty-list-item {
+    color: var(--gray-500);
+    font-style: italic;
+}
+
+.validation-error {
+    color: var(--danger);
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.validation-error::before {
+    content: "⚠";
+    font-size: 1rem;
+}
+
+.validation-message {
+    color: var(--danger);
+    font-size: 0.813rem;
+    margin-top: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--danger-light);
+    background: rgba(245, 101, 101, 0.1);
+    border-left: 2px solid var(--danger);
+    border-radius: 0.25rem;
+}
+
+
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .two-panel-layout {
@@ -641,5 +777,155 @@ body {
     .overall-metrics {
         grid-template-columns: 1fr;
         gap: 1rem;
+    }
+}
+
+/* ============================================
+   7. ACCESSIBILITY IMPROVEMENTS
+   ============================================ */
+
+/* Focus styles */
+*:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Skip to content link */
+.skip-to-content {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--primary);
+    color: white;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    z-index: 100000;
+}
+
+.skip-to-content:focus {
+    top: 0;
+}
+
+/* Screen reader only text */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* ============================================
+   8. RESPONSIVE IMPROVEMENTS
+   ============================================ */
+
+@media (max-width: 768px) {
+    .loading-modal {
+        padding: 1.5rem;
+        width: 95%;
+    }
+    
+    .phase-indicators {
+        flex-direction: column;
+    }
+    
+    .phase-connector {
+        width: 2px;
+        height: 1rem;
+    }
+    
+    .two-col {
+        grid-template-columns: 1fr;
+    }
+    
+    .metrics-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    .header-actions button {
+        width: 100%;
+    }
+}
+
+/* ============================================
+   9. ANIMATION IMPROVEMENTS
+   ============================================ */
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* Smooth transitions for dynamic content */
+.view-content {
+    animation: fadeIn var(--transition-base);
+}
+
+.card {
+    animation: slideIn var(--transition-base);
+}
+
+/* ============================================
+   10. PRINT STYLES
+   ============================================ */
+
+@media print {
+    .header-actions,
+    .btn,
+    .slider-row,
+    .rubric-controls,
+    .tab {
+        display: none !important;
+    }
+    
+    .card {
+        page-break-inside: avoid;
+        border: 1px solid #ddd;
+        margin-bottom: 1rem;
+    }
+    
+    body {
+        background: white;
+        padding: 0;
+    }
+    
+    .container {
+        box-shadow: none;
+        border-radius: 0;
     }
 }

@@ -1,488 +1,505 @@
-// js/components/assessment.js - Assessment Management Component
+// js/components/assessment.js - Assessment Management Component with Unified Data Handling
 
 const AssessmentComponent = {
-    // Initialize assessment sections
-    init() {
-        this.setupEventListeners();
-        this.initializeTabs();
+    // Component state
+    initialized: false,
+    currentTab: 'competitive',
+    
+    // Initialize assessment sections with async handling
+    async init() {
+        if (this.initialized) {
+            console.debug('Assessment component already initialized');
+            return true;
+        }
         
-        // Initialize rubrics for both assessments
-        RubricComponent.init('competitive');
-        RubricComponent.init('market');
-        
-        // Check if there's saved state
-        if (StateManager.load()) {
-            this.restoreFromState();
+        try {
+            // Setup event listeners
+            this.setupEventListeners();
+            
+            // Initialize tabs
+            this.initializeTabs();
+            
+            // Initialize rubrics for both assessments
+            const competitiveInit = RubricComponent.init('competitive');
+            const marketInit = RubricComponent.init('market');
+            
+            if (!competitiveInit || !marketInit) {
+                throw new Error('Failed to initialize rubric components');
+            }
+            
+            // Initialize evidence component
+            if (!EvidenceComponent.init()) {
+                console.warn('Evidence component initialization failed');
+            }
+            
+            // Check if there's saved state after components are ready
+            await this.loadSavedStateIfAvailable();
+            
+            this.initialized = true;
+            console.log('Assessment component initialized successfully');
+            
+            return true;
+        } catch (error) {
+            console.error('Failed to initialize assessment component:', error);
+            return false;
         }
     },
     
-    // Setup event listeners
-    setupEventListeners() {
-        // Submit buttons
-        const competitiveSubmit = document.getElementById('competitiveSubmitBtn');
-        const marketSubmit = document.getElementById('marketSubmitBtn');
-        
-        if (competitiveSubmit) {
-            competitiveSubmit.addEventListener('click', () => {
-                this.submitAssessment('competitive');
-            });
-        }
-        
-        if (marketSubmit) {
-            marketSubmit.addEventListener('click', () => {
-                this.submitAssessment('market');
-            });
-        }
-        
-        // View tabs within each assessment
-        document.querySelectorAll('.view-tabs .tab').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                const view = e.target.dataset.view;
-                const assessment = e.target.dataset.assessment;
-                this.switchView(assessment, view);
-            });
+    // Load saved state if available (async for proper sequencing)
+    async loadSavedStateIfAvailable() {
+        return new Promise((resolve) => {
+            // Small delay to ensure DOM is ready
+            setTimeout(() => {
+                if (StateManager.load()) {
+                    this.restoreFromState();
+                }
+                resolve();
+            }, 100);
         });
+    },
+    
+    // Setup event listeners with proper delegation
+    setupEventListeners() {
+        // Assessment tab switching
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('assessment-tab')) {
+                const assessment = e.target.dataset.assessment;
+                if (assessment) {
+                    this.switchAssessment(assessment);
+                }
+            }
+        });
+        
+        // View tab switching (delegated to EvidenceComponent)
+        // Already handled in EvidenceComponent
     },
     
     // Initialize assessment tabs
     initializeTabs() {
-        const tabs = document.querySelectorAll('.assessment-tab');
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const assessment = tab.dataset.assessment;
-                this.switchAssessment(assessment);
-            });
-        });
-    },
-    
-    // Switch between assessments
-    switchAssessment(assessmentType) {
-        // Update state
-        StateManager.setState({ currentAssessment: assessmentType });
+        const tabs = document.getElementById('assessmentTabs');
+        if (tabs) {
+            // Hide tabs initially until data is loaded
+            tabs.style.display = 'none';
+        }
         
-        // Update tabs
-        document.querySelectorAll('.assessment-tab').forEach(tab => {
-            tab.classList.toggle('active', tab.dataset.assessment === assessmentType);
-        });
-        
-        // Show/hide sections
-        document.getElementById('competitiveAssessment').style.display = 
-            assessmentType === 'competitive' ? 'block' : 'none';
-        document.getElementById('marketAssessment').style.display = 
-            assessmentType === 'market' ? 'block' : 'none';
-        document.getElementById('summarySection').style.display = 
-            assessmentType === 'summary' ? 'block' : 'none';
-        
-        // Update summary if viewing it
-        if (assessmentType === 'summary') {
-            this.updateSummary();
+        const progress = document.getElementById('assessmentProgress');
+        if (progress) {
+            progress.style.display = 'none';
         }
     },
     
-    // Switch view within an assessment
-    switchView(assessmentType, viewType) {
-        // Update tabs
-        document.querySelectorAll(`.view-tabs .tab[data-assessment="${assessmentType}"]`).forEach(tab => {
-            tab.classList.toggle('active', tab.dataset.view === viewType);
+    // Switch between assessments with validation
+    switchAssessment(assessment) {
+        if (!['competitive', 'market', 'summary'].includes(assessment)) {
+            console.error(`Invalid assessment type: ${assessment}`);
+            return;
+        }
+        
+        // Update current assessment in state
+        StateManager.setState({ currentAssessment: assessment });
+        this.currentTab = assessment;
+        
+        // Update tab active states
+        document.querySelectorAll('.assessment-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.assessment === assessment);
         });
         
-        // Show/hide views
-        const viewIds = {
-            competitive: {
-                summary: 'competitiveSummaryView',
-                detailed: 'competitiveDetailedView',
-                sources: 'competitiveSourcesView'
-            },
-            market: {
-                summary: 'marketSummaryView',
-                detailed: 'marketDetailedView',
-                sources: 'marketSourcesView'
-            }
+        // Show/hide assessment sections
+        const sections = {
+            competitive: 'competitiveAssessment',
+            market: 'marketAssessment',
+            summary: 'summarySection'
         };
         
-        if (viewIds[assessmentType]) {
-            Object.entries(viewIds[assessmentType]).forEach(([view, id]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.style.display = view === viewType ? 'block' : 'none';
-                }
-            });
-        }
-    },
-    
-    // Submit an assessment
-    async submitAssessment(assessmentType) {
-        const success = await RubricComponent.handleSubmit(assessmentType);
-        
-        if (success) {
-            // Check if both assessments are complete
-            if (StateManager.areAllAssessmentsComplete()) {
-                this.showCompletionMessage();
-            } else {
-                // Suggest moving to next assessment
-                if (assessmentType === 'competitive') {
-                    setTimeout(() => {
-                        if (confirm('Would you like to proceed to Market Opportunity assessment?')) {
-                            this.switchAssessment('market');
-                        }
-                    }, 500);
-                }
+        Object.entries(sections).forEach(([key, elementId]) => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = key === assessment ? 'block' : 'none';
             }
-            
-            // Update summary
+        });
+        
+        // Update summary if switching to it
+        if (assessment === 'summary') {
             this.updateSummary();
         }
     },
     
-    // Load competitive analysis results
+    // Load competitive analysis results with unified data structure
     loadCompetitiveResults(data) {
-        // Support two cases:
-        // 1) Live run: { gradedAnalysis, competitiveAnalysisText, competitiveAnalysisObj }
-        // 2) Restore-from-state: { gradedAnalysis: <already formatted object>, isFormatted: true }
-        let formattedData;
-        
-        const candidate = data?.gradedAnalysis;
-        const isAlreadyFormatted = !!(candidate && candidate.competitorCount && candidate.marketLeaders);
-        
-        if (isAlreadyFormatted || data?.isFormatted) {
-            formattedData = candidate; // use as-is
-        } else {
-            formattedData = CompetitiveAPI.formatForDisplay(
-                data.gradedAnalysis, 
-                data.competitiveAnalysisText,
-                data.competitiveAnalysisObj
-            );
+        if (!data) {
+            console.error('No competitive data provided');
+            return false;
         }
         
-        // Update state
-        StateManager.setAssessmentData('competitive', {
-            status: 'complete',
-            aiScore: formattedData.score,
-            data: formattedData,
-            rawResponse: data.rawResponse || null
-        });
+        try {
+            // Determine if data is already formatted
+            let formattedData;
+            let rawData;
+            
+            if (data.formatted) {
+                // New standardized structure from API
+                formattedData = data.formatted;
+                rawData = data.rawData;
+            } else if (data.isFormatted || this.isFormattedData(data)) {
+                // Data is already formatted (from saved state)
+                formattedData = data;
+                rawData = data.rawData || null;
+            } else {
+                // Legacy structure - should not happen with fixed APIs
+                console.error('Unexpected competitive data structure');
+                return false;
+            }
+            
+            // Validate formatted data
+            if (!this.validateCompetitiveData(formattedData)) {
+                throw new Error('Invalid competitive data structure');
+            }
+            
+            // Update state with standardized structure
+            StateManager.setAssessmentData('competitive', {
+                status: 'complete',
+                aiScore: formattedData.score,
+                data: formattedData,
+                rawData: rawData,
+                confidence: formattedData.confidence
+            });
+            
+            // Store competitive analysis text for market analysis
+            if (data.competitiveAnalysisText) {
+                StateManager.setState({ 
+                    competitiveAnalysisText: data.competitiveAnalysisText 
+                });
+            }
+            
+            // Set AI score in rubric
+            RubricComponent.setAiScore('competitive', formattedData.score);
+            
+            // Update displays
+            this.updateCompetitiveDisplays(formattedData);
+            
+            // Update evidence panel
+            EvidenceComponent.updateCompetitiveEvidence(formattedData);
+            
+            // Update progress
+            this.updateProgressIndicator('competitive', 'complete');
+            
+            return true;
+        } catch (error) {
+            console.error('Failed to load competitive results:', error);
+            StateManager.setAssessmentData('competitive', {
+                status: 'error',
+                error: error.message
+            });
+            return false;
+        }
+    },
+    
+    // Check if data appears to be formatted
+    isFormattedData(data) {
+        // Check for expected formatted data fields
+        return !!(
+            data && 
+            typeof data === 'object' &&
+            'score' in data &&
+            'competitorCount' in data &&
+            'justification' in data
+        );
+    },
+    
+    // Validate competitive data structure
+    validateCompetitiveData(data) {
+        if (!data || typeof data !== 'object') return false;
         
-        // Set AI score
-        RubricComponent.setAiScore('competitive', formattedData.score);
+        // Check required fields
+        const requiredFields = ['score', 'competitorCount', 'justification'];
+        for (const field of requiredFields) {
+            if (!(field in data)) {
+                console.error(`Missing required field: ${field}`);
+                return false;
+            }
+        }
         
+        // Validate score
+        const score = parseInt(data.score);
+        if (isNaN(score) || score < 1 || score > 9) {
+            console.error(`Invalid score: ${data.score}`);
+            return false;
+        }
+        
+        return true;
+    },
+    
+    // Update competitive displays
+    updateCompetitiveDisplays(data) {
         // Update metrics
-        document.getElementById('competitorCount').textContent = formattedData.competitorCount.total;
-        document.getElementById('marketLeaderCount').textContent = formattedData.marketLeaders.length;
-        document.getElementById('competitiveIntensity').textContent = 
-            Formatters.competitiveIntensity(formattedData.competitiveIntensity);
-
-        // Competitive confidence metric (matches market style)
-        const compConfEl = document.getElementById('competitiveConfidence');
-        if (compConfEl && formattedData.confidence != null) {
-            compConfEl.textContent = Formatters.confidence(formattedData.confidence);
-        }
+        this.safeUpdateElement('competitorCount', data.competitorCount?.total || 0);
+        this.safeUpdateElement('marketLeaderCount', data.marketLeaders?.length || 0);
+        this.safeUpdateElement('competitiveIntensity', 
+            Formatters.competitiveIntensity(data.competitiveIntensity));
+        
+        // Update confidence if element exists
+        this.safeUpdateElement('competitiveConfidence',
+            data.confidence !== null && data.confidence !== undefined
+                ? Formatters.confidence(data.confidence)
+                : 'Not available');
         
         // Update AI reasoning
-        document.getElementById('competitiveAiReasoning').textContent = formattedData.justification;
+        this.safeUpdateElement('competitiveAiReasoning', data.justification || '');
+        
+        // Update rubric description
+        const rubricDesc = CompetitiveAPI.getRubricDescription(data.score);
+        this.safeUpdateElement('competitiveRubricDescription', rubricDesc);
         
         // Update lists
-        document.getElementById('competitiveRisksList').innerHTML = 
-            Formatters.listToHTML(formattedData.keyRisks, 3);
-        document.getElementById('competitiveOpportunitiesList').innerHTML = 
-            Formatters.listToHTML(formattedData.opportunities, 3);
+        this.safeUpdateList('competitiveRisksList', data.keyRisks, 3);
+        this.safeUpdateList('competitiveOpportunitiesList', data.opportunities, 3);
         
-        // Detailed view with competitor details
-        this.loadCompetitiveDetailedView(formattedData);
+        // Update detailed views
+        this.loadCompetitiveDetailedView(data);
+        this.loadCompetitiveSources(data);
+    },
+    
+    // Load market analysis results with unified data structure
+    loadMarketResults(data) {
+        if (!data) {
+            console.error('No market data provided');
+            return false;
+        }
         
-        // Sources view now uses data_quality.sources_used
-        this.loadCompetitiveSources(formattedData);
+        try {
+            // Determine if data is already formatted
+            let formattedData;
+            let rawData;
+            
+            if (data.formatted) {
+                // New standardized structure from API
+                formattedData = data.formatted;
+                rawData = data.rawData;
+            } else if (data.isFormatted || this.isMarketFormattedData(data)) {
+                // Data is already formatted (from saved state)
+                formattedData = data;
+                rawData = data.rawData || null;
+            } else {
+                // Legacy structure - should not happen with fixed APIs
+                console.error('Unexpected market data structure');
+                return false;
+            }
+            
+            // Validate formatted data
+            if (!this.validateMarketData(formattedData)) {
+                throw new Error('Invalid market data structure');
+            }
+            
+            // Update state with standardized structure
+            StateManager.setAssessmentData('market', {
+                status: 'complete',
+                aiScore: formattedData.score,
+                data: formattedData,
+                rawData: rawData,
+                confidence: formattedData.confidence
+            });
+            
+            // Set AI score in rubric
+            RubricComponent.setAiScore('market', formattedData.score);
+            
+            // Update displays
+            this.updateMarketDisplays(formattedData);
+            
+            // Update evidence panel
+            EvidenceComponent.updateMarketEvidence(formattedData);
+            
+            // Update progress
+            this.updateProgressIndicator('market', 'complete');
+            
+            return true;
+        } catch (error) {
+            console.error('Failed to load market results:', error);
+            StateManager.setAssessmentData('market', {
+                status: 'error',
+                error: error.message
+            });
+            return false;
+        }
+    },
+    
+    // Check if market data appears to be formatted
+    isMarketFormattedData(data) {
+        return !!(
+            data && 
+            typeof data === 'object' &&
+            'score' in data &&
+            'primaryMarket' in data &&
+            'justification' in data
+        );
+    },
+    
+    // Validate market data structure
+    validateMarketData(data) {
+        if (!data || typeof data !== 'object') return false;
+        
+        // Check required fields
+        const requiredFields = ['score', 'primaryMarket', 'justification'];
+        for (const field of requiredFields) {
+            if (!(field in data)) {
+                console.error(`Missing required field: ${field}`);
+                return false;
+            }
+        }
+        
+        // Validate score
+        const score = parseInt(data.score);
+        if (isNaN(score) || score < 1 || score > 9) {
+            console.error(`Invalid score: ${data.score}`);
+            return false;
+        }
+        
+        return true;
+    },
+    
+    // Update market displays
+    updateMarketDisplays(data) {
+        // Update metrics
+        this.safeUpdateElement('tamValue', 
+            Formatters.currency(data.primaryMarket?.tam || 0));
+        this.safeUpdateElement('cagrValue', 
+            Formatters.percentage(data.primaryMarket?.cagr || 0));
+        this.safeUpdateElement('marketDesc', 
+            data.primaryMarket?.description || 'Not available');
+        
+        // Update confidence
+        this.safeUpdateElement('marketConfidence',
+            data.confidence !== null && data.confidence !== undefined
+                ? Formatters.confidence(data.confidence)
+                : 'Not available');
+        
+        // Update AI reasoning
+        this.safeUpdateElement('marketAiReasoning', 
+            data.justification?.summary || '');
+        
+        // Update rubric description
+        const rubricDesc = MarketAPI.getRubricDescription(data.score);
+        this.safeUpdateElement('marketRubricDescription', rubricDesc);
+        
+        // Update lists - handle missing elements gracefully
+        this.safeUpdateList('marketStrengthsList', data.justification?.strengths, 3);
+        this.safeUpdateList('marketLimitationsList', data.justification?.limitations, 3);
+        
+        // Update detailed views
+        this.loadMarketDetailedView(data);
+        this.loadMarketSources(data);
+    },
+    
+    // Safe element update helper
+    safeUpdateElement(elementId, value) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            if (typeof value === 'string') {
+                element.textContent = value;
+            } else {
+                element.textContent = String(value);
+            }
+        } else {
+            console.debug(`Element not found: ${elementId}`);
+        }
+    },
+    
+    // Safe list update helper
+    safeUpdateList(elementId, items, maxItems = null) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            const validItems = Array.isArray(items) ? items : [];
+            element.innerHTML = Formatters.listToHTML(validItems, maxItems);
+        } else {
+            console.debug(`List element not found: ${elementId}`);
+        }
     },
     
     // Load competitive detailed view
     loadCompetitiveDetailedView(data) {
-        // Competitor breakdown
-        const breakdown = document.getElementById('competitorBreakdown');
-        if (breakdown) {
-            breakdown.innerHTML = `
-                <div class="competitor-type">
-                    <div class="type-label">Large</div>
-                    <div class="type-count">${data.competitorCount.large}</div>
-                </div>
-                <div class="competitor-type">
-                    <div class="type-label">Mid-size</div>
-                    <div class="type-count">${data.competitorCount.midSize}</div>
-                </div>
-                <div class="competitor-type">
-                    <div class="type-label">Startups</div>
-                    <div class="type-count">${data.competitorCount.startups}</div>
-                </div>
-                <div class="competitor-type">
-                    <div class="type-label">Total</div>
-                    <div class="type-count">${data.competitorCount.total}</div>
-                </div>
-            `;
-        }
+        if (!data) return;
         
-        // Detailed competitor analysis
-        const marketLeadersList = document.getElementById('marketLeadersList');
-        if (marketLeadersList && data.detailedCompetitors && data.detailedCompetitors.length > 0) {
-            // Create detailed competitor cards instead of simple list
-            marketLeadersList.innerHTML = data.detailedCompetitors.map((comp, index) => `
-                <div class="competitor-detail-card">
-                    <div class="competitor-header">
-                        <h4>${index + 1}. ${comp.name}</h4>
-                        <span class="size-badge size-${(comp.size || 'Unknown').toLowerCase()}">${comp.size || 'Unknown'}</span>
-                    </div>
-                    <p class="competitor-description">${comp.description || 'Leading competitor in the market'}</p>
-                    ${comp.products && comp.products.length > 0 ? `
-                        <div class="competitor-section">
-                            <strong>Products/Services:</strong>
-                            <ul>${comp.products.map(p => `<li>${p}</li>`).join('')}</ul>
-                        </div>
-                    ` : ''}
-                    ${comp.strengths && comp.strengths.length > 0 ? `
-                        <div class="competitor-section">
-                            <strong>Key Strengths:</strong>
-                            <ul>${comp.strengths.slice(0, 3).map(s => `<li>${s}</li>`).join('')}</ul>
-                        </div>
-                    ` : ''}
-                    ${comp.weaknesses && comp.weaknesses.length > 0 ? `
-                        <div class="competitor-section">
-                            <strong>Potential Weaknesses:</strong>
-                            <ul>${comp.weaknesses.slice(0, 2).map(w => `<li>${w}</li>`).join('')}</ul>
-                        </div>
-                    ` : ''}
-                </div>
-            `).join('');
-        } else if (marketLeadersList) {
-            // Fallback to simple list if no detailed data
-            marketLeadersList.innerHTML = Formatters.listToHTML(data.marketLeaders);
-        }
+        // Update all risks and opportunities
+        this.safeUpdateList('allCompetitiveRisksList', data.keyRisks);
+        this.safeUpdateList('allCompetitiveOpportunitiesList', data.opportunities);
         
-        // All risks and opportunities
-        document.getElementById('allCompetitiveRisksList').innerHTML = 
-            Formatters.listToHTML(data.keyRisks);
-        document.getElementById('allCompetitiveOpportunitiesList').innerHTML = 
-            Formatters.listToHTML(data.opportunities);
+        // Let EvidenceComponent handle the complex displays
+        EvidenceComponent.updateCompetitiveDetails(data);
     },
     
-    // Load competitive sources (now uses data_quality.sources_used)
+    // Load competitive sources
     loadCompetitiveSources(data) {
-        const sourcesView = document.getElementById('competitiveSourcesView');
-        if (!sourcesView) return;
-
-        const sources = Array.isArray(data.sourcesUsed) ? data.sourcesUsed : [];
-
-        // Build a simple sources table
-        let sourcesHTML = `
-            <div class="sources-block">
-                <h4>Information Sources</h4>
-                <table class="sources-table">
-                    <thead>
-                        <tr>
-                            <th>Source</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${sources.length
-                            ? sources.map(s => `<tr><td>${Formatters.escapeHTML(s)}</td></tr>`).join('')
-                            : `<tr><td>No sources reported</td></tr>`}
-                    </tbody>
-                </table>
-                <div class="sources-note">
-                    <p><strong>Analysis Confidence:</strong> ${data.confidence != null ? Formatters.confidence(data.confidence) : '-'}</p>
-                    <p class="data-quality-note">
-                        Sources used are provided by the competitive analysis engine for this assessment.
-                    </p>
-                </div>
-            </div>
-        `;
-
-        sourcesView.innerHTML = sourcesHTML;
-    },
-    
-    // Load market analysis results
-    loadMarketResults(data) {
-        const assessment = StateManager.getAssessment('market');
-        const formattedData = MarketAPI.formatForDisplay(data.marketData, data.scoringData);
+        if (!data) return;
         
-        // Update state
-        StateManager.setAssessmentData('market', {
-            status: 'complete',
-            aiScore: formattedData.score,
-            data: formattedData,
-            rawResponse: data.rawResponse
-        });
-        
-        // Set AI score
-        RubricComponent.setAiScore('market', formattedData.score);
-        
-        // Update metrics including confidence
-        document.getElementById('tamValue').textContent = 
-            Formatters.currency(formattedData.primaryMarket.tam);
-        document.getElementById('cagrValue').textContent = 
-            Formatters.percentage(formattedData.primaryMarket.cagr);
-        document.getElementById('marketDesc').textContent = 
-            formattedData.primaryMarket.description;
-            
-        // Add confidence display
-        const marketConfidenceEl = document.getElementById('marketConfidence');
-        if (marketConfidenceEl) {
-            marketConfidenceEl.textContent = Formatters.confidence(formattedData.confidence);
-        }
-        
-        // Update AI reasoning
-        document.getElementById('marketAiReasoning').textContent = 
-            formattedData.justification.summary;
-        
-        // Update lists
-        document.getElementById('marketStrengthsList').innerHTML = 
-            Formatters.listToHTML(formattedData.justification.strengths, 3);
-        document.getElementById('marketLimitationsList').innerHTML = 
-            Formatters.listToHTML(formattedData.justification.limitations, 3);
-        
-        // Detailed view
-        this.loadMarketDetailedView(formattedData);
-        
-        // Sources
-        this.loadMarketSources(formattedData);
+        // Sources are now in data.sourcesUsed
+        const sources = data.sourcesUsed || [];
+        EvidenceComponent.updateCompetitiveSources(sources, data.detailedCompetitors || []);
     },
     
     // Load market detailed view
     loadMarketDetailedView(data) {
-        // Market analysis
-        const marketAnalysis = document.getElementById('marketAnalysis');
-        if (marketAnalysis) {
-            let html = '';
-            
-            if (data.marketAnalysis.executiveSummary) {
-                html += `
-                    <div class="summary-section">
-                        <h4>Executive Summary</h4>
-                        <p>${data.marketAnalysis.executiveSummary}</p>
-                    </div>
-                `;
-            }
-            
-            if (data.marketAnalysis.problemStatement) {
-                html += `
-                    <div class="statement-section">
-                        <h4>Problem Statement</h4>
-                        <p>${data.marketAnalysis.problemStatement}</p>
-                    </div>
-                `;
-            }
-            
-            if (data.marketAnalysis.differentiation) {
-                html += `
-                    <div class="statement-section">
-                        <h4>Differentiation</h4>
-                        <p>${data.marketAnalysis.differentiation}</p>
-                    </div>
-                `;
-            }
-            
-            marketAnalysis.innerHTML = html;
-        }
+        if (!data) return;
         
-        // All lists
-        document.getElementById('allMarketStrengthsList').innerHTML = 
-            Formatters.listToHTML([
-                ...data.justification.strengths,
-                ...data.scoringAlignment.strengths
-            ]);
-        document.getElementById('allMarketLimitationsList').innerHTML = 
-            Formatters.listToHTML([
-                ...data.justification.limitations,
-                ...data.scoringAlignment.limitations
-            ]);
-        document.getElementById('marketRisksList').innerHTML = 
-            Formatters.listToHTML(data.justification.risks);
+        // Let EvidenceComponent handle the complex displays
+        EvidenceComponent.updateMarketDetails(data);
     },
     
     // Load market sources
     loadMarketSources(data) {
-        const tbody = document.getElementById('marketSourcesTableBody');
-        if (tbody && data.markets) {
-            tbody.innerHTML = data.markets.map(m => `
-                <tr>
-                    <td>${m.description}</td>
-                    <td>${Formatters.currency(m.tam_current_usd)}</td>
-                    <td>${Formatters.percentage(m.cagr_percent)}</td>
-                    <td><a href="${m.source_url}" target="_blank">View</a></td>
-                </tr>
-            `).join('');
-        }
+        if (!data) return;
+        
+        // Sources are in data.markets
+        EvidenceComponent.updateMarketSources(data.markets || []);
     },
     
-    // Update summary view
+    // Update summary section
     updateSummary() {
-        const competitive = StateManager.getAssessment('competitive');
-        const market = StateManager.getAssessment('market');
+        const state = StateManager.getState();
+        const competitive = state.assessments.competitive;
+        const market = state.assessments.market;
         
-        // Competitive summary
-        document.getElementById('summaryCompetitiveAi').textContent = 
-            competitive.aiScore || '-';
-        document.getElementById('summaryCompetitiveUser').textContent = 
-            competitive.userScore || '-';
-        document.getElementById('summaryCompetitiveJustification').textContent = 
-            competitive.justification || 'No assessment provided yet';
+        // Update competitive summary
+        this.safeUpdateElement('summaryCompetitiveAi', 
+            competitive.aiScore !== null ? competitive.aiScore : '-');
+        this.safeUpdateElement('summaryCompetitiveUser', 
+            competitive.userScore !== null ? competitive.userScore : '-');
+        this.safeUpdateElement('summaryCompetitiveJustification', 
+            competitive.justification || 'No assessment provided yet');
         
-        // Market summary
-        document.getElementById('summaryMarketAi').textContent = 
-            market.aiScore || '-';
-        document.getElementById('summaryMarketUser').textContent = 
-            market.userScore || '-';
-        document.getElementById('summaryMarketJustification').textContent = 
-            market.justification || 'No assessment provided yet';
+        // Update market summary
+        this.safeUpdateElement('summaryMarketAi', 
+            market.aiScore !== null ? market.aiScore : '-');
+        this.safeUpdateElement('summaryMarketUser', 
+            market.userScore !== null ? market.userScore : '-');
+        this.safeUpdateElement('summaryMarketJustification', 
+            market.justification || 'No assessment provided yet');
         
-        // Overall metrics
-        const avgAi = StateManager.calculateAverageScore('aiScore');
-        const avgUser = StateManager.calculateAverageScore('userScore');
-        const completedCount = StateManager.getCompletedCount();
+        // Update overall statistics
+        const stats = StateManager.getAssessmentStats();
         
-        document.getElementById('overallAiAverage').textContent = 
-            avgAi ? avgAi.toFixed(1) : '-';
-        document.getElementById('overallUserAverage').textContent = 
-            avgUser ? avgUser.toFixed(1) : '-';
-        document.getElementById('assessmentStatus').textContent = 
-            `${completedCount}/2`;
+        this.safeUpdateElement('overallAiAverage', 
+            stats.averageAiScore !== null ? stats.averageAiScore.toFixed(1) : '-');
+        this.safeUpdateElement('overallUserAverage', 
+            stats.averageUserScore !== null ? stats.averageUserScore.toFixed(1) : '-');
+        this.safeUpdateElement('assessmentStatus', 
+            `${stats.completed}/${stats.totalAssessments}`);
     },
     
-    // Show completion message
-    showCompletionMessage() {
-        const msg = document.createElement('div');
-        msg.className = 'completion-message';
-        msg.innerHTML = `
-            <h2>🎉 All Assessments Complete!</h2>
-            <p>You can now export the full report or review your assessments.</p>
-            <button onclick="AssessmentComponent.switchAssessment('summary')">View Summary</button>
-        `;
-        msg.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: var(--shadow-xl);
-            text-align: center;
-            z-index: 10000;
-            max-width: 400px;
-        `;
+    // Update progress indicator
+    updateProgressIndicator(assessment, status) {
+        const progressItem = document.querySelector(`.progress-item[data-assessment="${assessment}"]`);
+        if (progressItem) {
+            progressItem.classList.remove('pending', 'in-progress', 'complete');
+            progressItem.classList.add(status);
+        }
         
-        msg.querySelector('button').style.cssText = `
-            margin-top: 1rem;
-            padding: 0.75rem 1.5rem;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-weight: 500;
-        `;
-        
-        document.body.appendChild(msg);
-        
-        setTimeout(() => {
-            document.body.removeChild(msg);
-        }, 5000);
+        // Update tab indicator
+        const tab = document.querySelector(`.assessment-tab[data-assessment="${assessment}"]`);
+        if (tab && status === 'complete') {
+            const userScore = StateManager.getAssessment(assessment)?.userScore;
+            if (userScore !== null && userScore !== undefined) {
+                tab.classList.add('completed');
+            }
+        }
     },
     
     // Restore from saved state
@@ -497,9 +514,84 @@ const AssessmentComponent = {
         
         // If assessments have been run, show them
         if (state.assessments.competitive.data || state.assessments.market.data) {
+            // Update header
+            if (state.techDescription) {
+                const nameEl = document.getElementById('companyName');
+                const metaEl = document.getElementById('companyMeta');
+                
+                if (nameEl) {
+                    nameEl.textContent = Formatters.truncate(state.techDescription, 60);
+                }
+                if (metaEl) {
+                    metaEl.textContent = 'Competitive Risk & Market Opportunity Analysis';
+                }
+            }
+            
             // Hide input section, show assessments
-            document.getElementById('inputSection').style.display = 'none';
-            document.getElementById('assessmentTabs').style.display = 'flex';
+            const inputSection = document.getElementById('inputSection');
+            if (inputSection) {
+                inputSection.style.display = 'none';
+            }
+            
+            const assessmentSection = document.getElementById('assessmentSection');
+            if (assessmentSection) {
+                assessmentSection.style.display = 'flex';
+                assessmentSection.style.flexDirection = 'column';
+                assessmentSection.style.flex = '1';
+            }
+            
+            const assessmentTabs = document.getElementById('assessmentTabs');
+            if (assessmentTabs) {
+                assessmentTabs.style.display = 'flex';
+            }
+            
+            const assessmentProgress = document.getElementById('assessmentProgress');
+            if (assessmentProgress) {
+                assessmentProgress.style.display = 'flex';
+            }
+            
+            // Show header buttons
+            const newAnalysisBtn = document.getElementById('newAnalysisBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            if (newAnalysisBtn) newAnalysisBtn.style.display = 'inline-block';
+            if (exportBtn) exportBtn.style.display = 'inline-block';
+            
+            // Restore competitive if available
+            if (state.assessments.competitive.data) {
+                this.loadCompetitiveResults({
+                    formatted: state.assessments.competitive.data,
+                    rawData: state.assessments.competitive.rawData,
+                    competitiveAnalysisText: state.competitiveAnalysisText
+                });
+                
+                // Restore user assessment if submitted
+                if (state.assessments.competitive.submitted) {
+                    RubricComponent.setScore('competitive', state.assessments.competitive.userScore);
+                    const commentEl = document.getElementById('competitiveScoreComment');
+                    if (commentEl) {
+                        commentEl.value = state.assessments.competitive.justification;
+                    }
+                    RubricComponent.setEnabled('competitive', false);
+                }
+            }
+            
+            // Restore market if available
+            if (state.assessments.market.data) {
+                this.loadMarketResults({
+                    formatted: state.assessments.market.data,
+                    rawData: state.assessments.market.rawData
+                });
+                
+                // Restore user assessment if submitted
+                if (state.assessments.market.submitted) {
+                    RubricComponent.setScore('market', state.assessments.market.userScore);
+                    const commentEl = document.getElementById('marketScoreComment');
+                    if (commentEl) {
+                        commentEl.value = state.assessments.market.justification;
+                    }
+                    RubricComponent.setEnabled('market', false);
+                }
+            }
             
             // Show appropriate assessment
             if (state.currentAssessment) {
@@ -507,24 +599,20 @@ const AssessmentComponent = {
             } else {
                 this.switchAssessment('competitive');
             }
-            
-            // Restore competitive if available (pass formatted data directly)
-            if (state.assessments.competitive.data) {
-                this.loadCompetitiveResults({
-                    gradedAnalysis: state.assessments.competitive.data,
-                    isFormatted: true,
-                    rawResponse: state.assessments.competitive.rawResponse
-                });
-            }
-            
-            // Restore market if available
-            if (state.assessments.market.data) {
-                this.loadMarketResults({
-                    marketData: state.assessments.market.data.marketData,
-                    scoringData: state.assessments.market.data.scoringData,
-                    rawResponse: state.assessments.market.rawResponse
-                });
-            }
         }
+    },
+    
+    // Cleanup component
+    cleanup() {
+        // Cleanup child components
+        if (RubricComponent.cleanup) {
+            RubricComponent.cleanup();
+        }
+        
+        if (EvidenceComponent.cleanup) {
+            EvidenceComponent.cleanup();
+        }
+        
+        this.initialized = false;
     }
 };

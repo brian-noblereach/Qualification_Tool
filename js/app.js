@@ -1,4 +1,4 @@
-// js/app.js - Main Application Controller
+// js/app.js - Main Application Controller with Enhanced Error Handling and State Management
 
 const App = {
     // Application state
@@ -6,31 +6,49 @@ const App = {
     progressInterval: null,
     startTime: null,
     currentPhase: null,
+    isAnalyzing: false,
     
-    // Initialize application
-    init() {
-        if (this.initialized) return;
+    // Initialize application with async component loading
+    async init() {
+        if (this.initialized) {
+            console.debug('Application already initialized');
+            return true;
+        }
         
         console.log('Initializing Venture Assessment Platform...');
         
-        // Initialize components
-        AssessmentComponent.init();
-        EvidenceComponent.init();
-        
-        // Setup main event listeners
-        this.setupEventListeners();
-        
-        // Load saved state if available
-        this.loadSavedState();
-        
-        // Add CSS animations if not present
-        this.injectAnimations();
-        
-        this.initialized = true;
-        console.log('Application initialized successfully');
+        try {
+            // Initialize state manager first
+            if (!StateManager.initialized) {
+                StateManager.init();
+            }
+            
+            // Initialize components in sequence
+            const assessmentInit = await AssessmentComponent.init();
+            if (!assessmentInit) {
+                throw new Error('Failed to initialize assessment component');
+            }
+            
+            // Setup main event listeners
+            this.setupEventListeners();
+            
+            // Add CSS animations if not present
+            this.injectAnimations();
+            
+            // Mark as initialized
+            this.initialized = true;
+            
+            console.log('Application initialized successfully');
+            return true;
+            
+        } catch (error) {
+            console.error('Application initialization failed:', error);
+            this.showInitializationError(error);
+            return false;
+        }
     },
     
-    // Setup main event listeners
+    // Setup main event listeners with proper error handling
     setupEventListeners() {
         // Analyze button
         const analyzeBtn = document.getElementById('analyzeBtn');
@@ -49,36 +67,61 @@ const App = {
         const finalExportBtn = document.getElementById('finalExportBtn');
         
         if (exportBtn) {
-            exportBtn.addEventListener('click', () => ExportUtility.generateReport());
+            exportBtn.addEventListener('click', () => this.handleExport());
         }
         if (finalExportBtn) {
-            finalExportBtn.addEventListener('click', () => ExportUtility.generateReport());
+            finalExportBtn.addEventListener('click', () => this.handleExport());
         }
         
-        // Retry button
+        // Retry button in error section
         const retryBtn = document.getElementById('retryBtn');
         if (retryBtn) {
             retryBtn.addEventListener('click', () => this.retryAnalysis());
         }
         
-        // Auto-save technology description
+        // Auto-save technology description with debouncing
         const techInput = document.getElementById('techDescription');
         if (techInput) {
+            let saveTimeout;
             techInput.addEventListener('input', () => {
-                StateManager.setState({ techDescription: techInput.value });
-                StateManager.save();
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    StateManager.setState({ techDescription: techInput.value });
+                    StateManager.save();
+                }, 500);
             });
         }
+        
+        // Handle page visibility change to pause/resume progress
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.progressInterval) {
+                console.log('Page hidden, pausing progress updates');
+            }
+        });
     },
     
-    // Run complete analysis
+    // Run complete analysis with enhanced error handling
     async runAnalysis() {
-        const techDescription = document.getElementById('techDescription').value.trim();
+        // Prevent multiple simultaneous analyses
+        if (this.isAnalyzing) {
+            console.warn('Analysis already in progress');
+            return;
+        }
+        
+        const techDescription = document.getElementById('techDescription')?.value?.trim();
         
         if (!techDescription) {
             this.showValidationError('Please provide a technology description');
             return;
         }
+        
+        // Minimum length validation
+        if (techDescription.length < 20) {
+            this.showValidationError('Please provide a more detailed technology description (at least 20 characters)');
+            return;
+        }
+        
+        this.isAnalyzing = true;
         
         // Update state
         StateManager.setState({
@@ -100,6 +143,11 @@ const App = {
             console.log('Starting competitive analysis...');
             
             const competitiveResult = await CompetitiveAPI.retryAnalysis(techDescription);
+            
+            if (!competitiveResult || !competitiveResult.formatted) {
+                throw new Error('Invalid competitive analysis result');
+            }
+            
             console.log('Competitive analysis complete');
             
             // Store competitive analysis text for market analysis
@@ -115,6 +163,11 @@ const App = {
                 techDescription, 
                 competitiveResult.competitiveAnalysisText
             );
+            
+            if (!marketResult || !marketResult.formatted) {
+                throw new Error('Invalid market analysis result');
+            }
+            
             console.log('Market analysis complete');
             
             // Process and display results
@@ -125,39 +178,74 @@ const App = {
             this.showError(error);
         } finally {
             this.stopProgress();
+            this.isAnalyzing = false;
             StateManager.setState({ isAnalyzing: false });
         }
     },
     
-    // Process analysis results
+    // Process analysis results with validation
     processResults(competitiveResult, marketResult) {
-        // Load competitive results (now includes parsed object)
-        AssessmentComponent.loadCompetitiveResults(competitiveResult);
-        
-        // Load market results
-        AssessmentComponent.loadMarketResults(marketResult);
-        
-        // Show assessment section
-        this.showSection('assessment');
-        
-        // Show tabs and controls
-        document.getElementById('assessmentTabs').style.display = 'flex';
-        document.getElementById('newAnalysisBtn').style.display = 'inline-block';
-        document.getElementById('exportBtn').style.display = 'inline-block';
-        document.getElementById('assessmentProgress').style.display = 'flex';
-        
-        // Default to competitive assessment
-        AssessmentComponent.switchAssessment('competitive');
-        
-        // Save state
-        StateManager.save();
-        
-        // Show success notification
-        this.showSuccessNotification();
+        try {
+            // Load competitive results using standardized structure
+            const competitiveLoaded = AssessmentComponent.loadCompetitiveResults(competitiveResult);
+            
+            if (!competitiveLoaded) {
+                throw new Error('Failed to load competitive results');
+            }
+            
+            // Load market results using standardized structure
+            const marketLoaded = AssessmentComponent.loadMarketResults(marketResult);
+            
+            if (!marketLoaded) {
+                throw new Error('Failed to load market results');
+            }
+            
+            // Show assessment section
+            this.showSection('assessment');
+            
+            // Show tabs and controls
+            this.showAssessmentControls();
+            
+            // Default to competitive assessment
+            AssessmentComponent.switchAssessment('competitive');
+            
+            // Save state
+            StateManager.save();
+            
+            // Show success notification
+            this.showSuccessNotification();
+            
+        } catch (error) {
+            console.error('Failed to process results:', error);
+            this.showError(error);
+        }
     },
     
-    // Update loading phase
+    // Show assessment controls
+    showAssessmentControls() {
+        const elements = {
+            assessmentTabs: document.getElementById('assessmentTabs'),
+            newAnalysisBtn: document.getElementById('newAnalysisBtn'),
+            exportBtn: document.getElementById('exportBtn'),
+            assessmentProgress: document.getElementById('assessmentProgress')
+        };
+        
+        Object.entries(elements).forEach(([name, element]) => {
+            if (element) {
+                element.style.display = name === 'assessmentTabs' || name === 'assessmentProgress' 
+                    ? 'flex' 
+                    : 'inline-block';
+            }
+        });
+    },
+    
+    // Update loading phase with validation
     updatePhase(phase) {
+        if (!['competitive', 'market', 'complete'].includes(phase)) {
+            console.error(`Invalid phase: ${phase}`);
+            return;
+        }
+        
         this.currentPhase = phase;
         StateManager.setState({ analysisPhase: phase });
         
@@ -180,18 +268,30 @@ const App = {
         // Update loading title
         const loadingTitle = document.getElementById('loadingTitle');
         if (loadingTitle) {
-            loadingTitle.textContent = phase === 'competitive' ? 
-                'Analyzing Competitive Landscape' : 
-                'Analyzing Market Opportunity';
+            const titles = {
+                competitive: 'Analyzing Competitive Landscape',
+                market: 'Analyzing Market Opportunity',
+                complete: 'Analysis Complete'
+            };
+            loadingTitle.textContent = titles[phase] || 'Processing...';
         }
     },
     
-    // Start progress animation
+    // Start progress animation with proper cleanup
     startProgress() {
+        // Clear any existing interval
+        this.stopProgress();
+        
         this.startTime = Date.now();
         let lastMessageIndex = -1;
         
         this.progressInterval = setInterval(() => {
+            // Check if still analyzing
+            if (!this.isAnalyzing) {
+                this.stopProgress();
+                return;
+            }
+            
             const elapsed = (Date.now() - this.startTime) / 1000;
             const minutes = Math.floor(elapsed / 60);
             const seconds = Math.floor(elapsed % 60);
@@ -211,22 +311,24 @@ const App = {
             }
             
             // Update status message
-            const messages = this.currentPhase === 'competitive' ? 
-                CompetitiveAPI.progressMessages : 
-                MarketAPI.progressMessages;
+            const messages = this.currentPhase === 'competitive' 
+                ? CompetitiveAPI.progressMessages 
+                : MarketAPI.progressMessages;
             
-            const currentMessage = messages.filter(m => m.time <= elapsed).pop();
-            if (currentMessage && messages.indexOf(currentMessage) !== lastMessageIndex) {
-                lastMessageIndex = messages.indexOf(currentMessage);
-                const statusEl = document.getElementById('progressStatus');
-                if (statusEl) {
-                    statusEl.textContent = currentMessage.message;
+            if (messages && messages.length > 0) {
+                const currentMessage = messages.filter(m => m.time <= elapsed).pop();
+                if (currentMessage && messages.indexOf(currentMessage) !== lastMessageIndex) {
+                    lastMessageIndex = messages.indexOf(currentMessage);
+                    const statusEl = document.getElementById('progressStatus');
+                    if (statusEl) {
+                        statusEl.textContent = currentMessage.message;
+                    }
                 }
             }
         }, 500);
     },
     
-    // Stop progress animation
+    // Stop progress animation with cleanup
     stopProgress() {
         if (this.progressInterval) {
             clearInterval(this.progressInterval);
@@ -238,20 +340,28 @@ const App = {
         if (progressBar) {
             progressBar.style.width = '100%';
         }
+        
+        // Reset time
+        this.startTime = null;
     },
     
-    // Show specific section
+    // Show specific section with proper layout preservation
     showSection(section) {
-        const sections = ['input', 'loading', 'assessment', 'error'];
-        sections.forEach(s => {
+        const validSections = ['input', 'loading', 'assessment', 'error'];
+        
+        if (!validSections.includes(section)) {
+            console.error(`Invalid section: ${section}`);
+            return;
+        }
+        
+        validSections.forEach(s => {
             const el = document.getElementById(`${s}Section`);
             if (el) {
-                // Preserve layout semantics: loading should remain a centered flex container
                 if (s === section) {
+                    // Preserve specific layout requirements
                     if (s === 'loading') {
-                        el.style.display = 'flex'; // keep flex to center the modal
+                        el.style.display = 'flex'; // Center the loading modal
                     } else if (s === 'assessment') {
-                        // Special handling for assessment section
                         el.style.display = 'flex';
                         el.style.flexDirection = 'column';
                         el.style.flex = '1';
@@ -265,7 +375,7 @@ const App = {
         });
     },
     
-    // Update header
+    // Update header with truncation
     updateHeader(techDescription) {
         const nameEl = document.getElementById('companyName');
         const metaEl = document.getElementById('companyMeta');
@@ -278,34 +388,42 @@ const App = {
         }
     },
     
-    // Show validation error
+    // Show validation error with improved UX
     showValidationError(message) {
         const input = document.getElementById('techDescription');
-        if (input) {
-            input.style.borderColor = 'var(--danger)';
-            input.focus();
-            
-            // Add error message
-            const errorMsg = document.createElement('div');
-            errorMsg.className = 'validation-error';
-            errorMsg.textContent = message;
-            errorMsg.style.cssText = `
-                color: var(--danger);
-                font-size: 0.875rem;
-                margin-top: 0.5rem;
-            `;
-            
-            input.parentElement.appendChild(errorMsg);
-            
-            // Remove after 3 seconds
-            setTimeout(() => {
-                input.style.borderColor = '';
-                errorMsg.remove();
-            }, 3000);
+        if (!input) return;
+        
+        // Remove any existing error
+        const existingError = input.parentElement.querySelector('.validation-error');
+        if (existingError) {
+            existingError.remove();
         }
+        
+        input.style.borderColor = 'var(--danger)';
+        input.focus();
+        
+        // Add error message
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'validation-error';
+        errorMsg.textContent = message;
+        errorMsg.style.cssText = `
+            color: var(--danger);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            animation: fadeIn 0.3s ease;
+        `;
+        
+        input.parentElement.appendChild(errorMsg);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            input.style.borderColor = '';
+            errorMsg.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => errorMsg.remove(), 300);
+        }, 5000);
     },
     
-    // Show error section
+    // Show error section with details
     showError(error) {
         this.showSection('error');
         
@@ -317,12 +435,52 @@ const App = {
         }
         
         if (detailsEl) {
-            detailsEl.textContent = error.stack || '';
-            detailsEl.style.display = error.stack ? 'block' : 'none';
+            // Only show stack trace in development mode
+            const isDev = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1';
+            
+            if (isDev && error.stack) {
+                detailsEl.textContent = error.stack;
+                detailsEl.style.display = 'block';
+            } else {
+                detailsEl.style.display = 'none';
+            }
         }
         
         // Store error for retry
         StateManager.setState({ lastError: error });
+    },
+    
+    // Show initialization error
+    showInitializationError(error) {
+        const container = document.body;
+        const errorDiv = document.createElement('div');
+        errorDiv.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 2rem;
+                border-radius: 0.5rem;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                max-width: 400px;
+                text-align: center;
+            ">
+                <h2 style="color: var(--danger); margin-bottom: 1rem;">Initialization Error</h2>
+                <p style="margin-bottom: 1rem;">${error.message || 'Failed to initialize application'}</p>
+                <button onclick="location.reload()" style="
+                    padding: 0.5rem 1rem;
+                    background: var(--primary);
+                    color: white;
+                    border: none;
+                    border-radius: 0.25rem;
+                    cursor: pointer;
+                ">Reload Page</button>
+            </div>
+        `;
+        container.appendChild(errorDiv);
     },
     
     // Retry analysis
@@ -335,46 +493,68 @@ const App = {
         }
     },
     
-    // Start new analysis
+    // Start new analysis with confirmation
     startNewAnalysis() {
-        if (confirm('Are you sure you want to start a new analysis? Current progress will be lost.')) {
-            // Reset state
-            StateManager.reset();
-            
-            // Clear input
-            const techInput = document.getElementById('techDescription');
-            if (techInput) {
-                techInput.value = '';
+        const hasData = StateManager.getState().assessments.competitive.data || 
+                       StateManager.getState().assessments.market.data;
+        
+        if (hasData) {
+            if (!confirm('Are you sure you want to start a new analysis? Current progress will be lost.')) {
+                return;
             }
-            
-            // Reset UI
-            this.showSection('input');
-            document.getElementById('assessmentTabs').style.display = 'none';
-            document.getElementById('newAnalysisBtn').style.display = 'none';
-            document.getElementById('exportBtn').style.display = 'none';
-            document.getElementById('assessmentProgress').style.display = 'none';
-            
-            // Update header
-            document.getElementById('companyName').textContent = 'Venture Assessment Platform';
-            document.getElementById('companyMeta').textContent = 'Enter technology description to begin assessment';
         }
+        
+        // Reset state
+        StateManager.reset();
+        
+        // Clear input
+        const techInput = document.getElementById('techDescription');
+        if (techInput) {
+            techInput.value = '';
+            techInput.focus();
+        }
+        
+        // Reset UI
+        this.resetUI();
     },
     
-    // Load saved state
-    loadSavedState() {
-        if (StateManager.load()) {
-            const state = StateManager.getState();
-            
-            // Restore technology description
-            const techInput = document.getElementById('techDescription');
-            if (techInput && state.techDescription) {
-                techInput.value = state.techDescription;
+    // Reset UI to initial state
+    resetUI() {
+        this.showSection('input');
+        
+        // Hide controls
+        const elementsToHide = [
+            'assessmentTabs',
+            'newAnalysisBtn',
+            'exportBtn',
+            'assessmentProgress'
+        ];
+        
+        elementsToHide.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        
+        // Reset header
+        const nameEl = document.getElementById('companyName');
+        const metaEl = document.getElementById('companyMeta');
+        
+        if (nameEl) nameEl.textContent = 'Venture Assessment Platform';
+        if (metaEl) metaEl.textContent = 'Enter technology description to begin assessment';
+    },
+    
+    // Handle export with validation
+    async handleExport() {
+        try {
+            // Check if jsPDF is loaded
+            if (!window.jspdf) {
+                throw new Error('PDF library not loaded. Please refresh the page and try again.');
             }
             
-            // If analysis was completed, show results
-            if (state.assessments.competitive.data || state.assessments.market.data) {
-                AssessmentComponent.restoreFromState();
-            }
+            await ExportUtility.generateReport();
+        } catch (error) {
+            console.error('Export failed:', error);
+            alert(`Export failed: ${error.message}`);
         }
     },
     
@@ -404,6 +584,7 @@ const App = {
             gap: 1rem;
             z-index: 1000;
             animation: slideInRight 0.3s ease;
+            max-width: 400px;
         `;
         
         document.body.appendChild(notification);
@@ -421,26 +602,14 @@ const App = {
         const style = document.createElement('style');
         style.id = 'appAnimations';
         style.textContent = `
-            @keyframes slideIn {
-                from {
-                    opacity: 0;
-                    transform: translate(-50%, -60%);
-                }
-                to {
-                    opacity: 1;
-                    transform: translate(-50%, -50%);
-                }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
             }
             
-            @keyframes slideOut {
-                from {
-                    opacity: 1;
-                    transform: translate(-50%, -50%);
-                }
-                to {
-                    opacity: 0;
-                    transform: translate(-50%, -40%);
-                }
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
             }
             
             @keyframes slideInRight {
@@ -464,9 +633,59 @@ const App = {
                     transform: translateX(100%);
                 }
             }
+            
+            @keyframes scaleIn {
+                from {
+                    opacity: 0;
+                    transform: translate(-50%, -50%) scale(0.8);
+                }
+                to {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
+            }
+            
+            @keyframes scaleOut {
+                from {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
+                to {
+                    opacity: 0;
+                    transform: translate(-50%, -50%) scale(0.8);
+                }
+            }
+            
+            .no-data {
+                opacity: 0.5;
+                font-style: italic;
+            }
+            
+            .empty-list {
+                opacity: 0.7;
+            }
+            
+            .validation-error {
+                animation: fadeIn 0.3s ease;
+            }
         `;
         
         document.head.appendChild(style);
+    },
+    
+    // Cleanup application
+    cleanup() {
+        // Stop any running intervals
+        this.stopProgress();
+        
+        // Cleanup components
+        if (AssessmentComponent.cleanup) {
+            AssessmentComponent.cleanup();
+        }
+        
+        // Reset state
+        this.initialized = false;
+        this.isAnalyzing = false;
     }
 };
 
@@ -474,5 +693,13 @@ const App = {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => App.init());
 } else {
+    // DOM is already ready
     App.init();
 }
+
+// Handle page unload
+window.addEventListener('beforeunload', () => {
+    if (App.isAnalyzing) {
+        return 'Analysis in progress. Are you sure you want to leave?';
+    }
+});
