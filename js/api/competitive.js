@@ -369,23 +369,33 @@ const CompetitiveAPI = {
         return sizeMap[sizeStr] || 'Unknown';
     },
 
-    // Extract products from competitor data
-    extractProducts(competitorData) {
-        const products = [];
-        
-        if (competitorData.product_name) {
-            products.push(competitorData.product_name);
-        }
-        
-        if (Array.isArray(competitorData.products)) {
-            products.push(...competitorData.products);
-        }
-        
-        // Remove duplicates and empty values
-        const unique = [...new Set(products)].filter(p => p && p.trim());
-        
-        return unique.length > 0 ? unique : ['Unknown product/service'];
-    },
+	// Extract products from competitor data
+	extractProducts(item) {
+	  try {
+		// Works whether 'item' is a competitor object or a looser shape
+		const products = [];
+
+		// Common shapes we’ve seen coming back:
+		if (Array.isArray(item?.products)) products.push(...item.products);
+		if (typeof item?.product_name === "string") products.push(item.product_name);
+
+		// Extra fallbacks (optional)
+		if (typeof item?.product === "string") products.push(item.product);
+		if (typeof item?.product_description === "string" && !products.length) {
+		  // very conservative extraction—only push if short-ish and single token
+		  const maybe = item.product_description.trim();
+		  if (maybe && maybe.length < 80 && !maybe.includes("\n")) products.push(maybe);
+		}
+
+		const unique = [...new Set(products.map(p => String(p).trim()))].filter(Boolean);
+		return unique.slice(0, 5);
+	  } catch (e) {
+		console.warn("extractProducts failed", e);
+		return [];
+	  }
+	},
+
+
     
     // Get the appropriate rubric description for a score
     getRubricDescription(score) {

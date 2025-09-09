@@ -87,7 +87,7 @@ const AssessmentComponent = {
             progress.style.display = 'none';
         }
     },
-    
+
     // Switch between assessments with validation
     switchAssessment(assessment) {
         if (!['competitive', 'market', 'summary'].includes(assessment)) {
@@ -607,30 +607,78 @@ const AssessmentComponent = {
     },
 	
 	updateAssessmentTabScore(assessment){
-	  try{
-		const st = StateManager.getAssessment(assessment);
-		if(!st) return;
+		  try{
+			const st = StateManager.getAssessment(assessment);
+			if(!st) return;
 
-		const display = Number.isInteger(st.userScore) ? st.userScore : st.aiScore;
-		const tab = document.querySelector(`.assessment-tab[data-assessment="${assessment}"]`);
-		const chip = document.getElementById(`${assessment}TabScore`);
-		if(!tab || !chip) return;
+			const display = Number.isInteger(st.userScore) ? st.userScore : st.aiScore;
+			const tab = document.querySelector(`.assessment-tab[data-assessment="${assessment}"]`);
+			const chip = document.getElementById(`${assessment}TabScore`);
+			if(!tab || !chip) return;
 
-		if(display == null){
-		  chip.textContent = '';
-		  tab.style.removeProperty('--tab-accent');
-		  chip.style.background = 'var(--gray-400)';
-		  return;
-		}
+			if(display == null){
+			  chip.textContent = '';
+			  tab.style.removeProperty('--tab-accent');
+			  chip.style.background = 'var(--gray-400)';
+			  return;
+			}
 
-		const sd = Formatters.scoreWithColor(display);   // returns {value,color,label}
-		chip.textContent = display;
-		chip.style.background = sd.color;
-		tab.style.setProperty('--tab-accent', sd.color);
-	  }catch(e){ console.warn('Tab score update failed', e); }
+			const sd = Formatters.scoreWithColor(display);   // returns {value,color,label}
+			chip.textContent = display;
+			chip.style.background = sd.color;
+			tab.style.setProperty('--tab-accent', sd.color);
+		  }catch(e){ console.warn('Tab score update failed', e); }
+		},
+
+	initCompanyAnalyzeFlow() {
+	  const btn = document.getElementById("analyzeCompanyBtn");
+	  if (!btn) return;
+		btn.addEventListener("click", async (e) => {
+		  e.preventDefault();
+
+		  // ✅ make sure this matches the input in index.html
+		  const urlEl = document.getElementById("companyUrlInput");
+
+		  let url = (urlEl?.value || "").trim();
+
+		  // Auto-prefix if the user typed "example.com"
+		  if (url && !/^https?:\/\//i.test(url)) {
+			url = "https://" + url;
+		  }
+
+		  if (!url) {
+			alert("Please enter a company website URL.");
+			urlEl?.focus();
+			return;
+		  }
+
+		  try {
+			LoadingUI?.show?.({ title: "Analyzing company…", phases: ["Company","Competitive","Market"] });
+
+			const uid = "local-user";
+			const company = await CompanyAPI.run(url, uid);
+			StateManager.setCompany?.(company);
+			CompanyView?.renderSummary?.(company);
+			LoadingUI?.completePhase?.("Company");
+
+			const compText = CompanyMappers.mapToCompetitivePrompt(company);
+			await AssessmentComponent.runCompetitiveFromText(compText);
+			LoadingUI?.completePhase?.("Competitive");
+
+			const marketText = CompanyMappers.mapToMarketPrompt(company);
+			await AssessmentComponent.runMarketFromText(marketText);
+			LoadingUI?.completePhase?.("Market");
+
+			LoadingUI?.hide?.();
+		  } catch (e2) {
+			console.error(e2);
+			LoadingUI?.error?.(String(e2?.message || e2));
+			alert("Company analysis failed: " + (e2?.message || e2));
+		  }
+		});
+
 	},
 
-    
     // Cleanup component
     cleanup() {
         // Cleanup child components
@@ -645,3 +693,9 @@ const AssessmentComponent = {
         this.initialized = false;
     }
 };
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (AssessmentComponent?.initCompanyAnalyzeFlow) {
+    AssessmentComponent.initCompanyAnalyzeFlow();
+  }
+});

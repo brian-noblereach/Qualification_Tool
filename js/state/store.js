@@ -537,6 +537,24 @@ const StateManager = {
     }
 };
 
+// --- Company slice ---
+const COMPANY_KEY = "va_company_json";
+
+StateManager.getCompany = function () {
+  try { return JSON.parse(localStorage.getItem(COMPANY_KEY) || "null"); }
+  catch { return null; }
+};
+
+StateManager.setCompany = function (companyJson) {
+  try { localStorage.setItem(COMPANY_KEY, JSON.stringify(companyJson)); }
+  catch (e) { console.warn("Failed saving company to localStorage", e); }
+};
+
+StateManager.clearCompany = function () {
+  localStorage.removeItem(COMPANY_KEY);
+};
+
+
 // Initialize state manager when module loads
 if (typeof window !== 'undefined') {
     StateManager.init();

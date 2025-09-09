@@ -31,25 +31,25 @@
     </header>
 
     <!-- Input Section -->
-    <section id="inputSection" class="input-section">
-      <div class="card">
-        <h2>Technology Description</h2>
-        <div class="input-field">
-          <textarea
-            id="techDescription"
-            placeholder="Describe the technology, its use case, and context..."
-            minlength="20"
-            aria-label="Technology description"
-            aria-describedby="techDescriptionHint"></textarea>
-        </div>
-        <div id="techDescriptionHint" class="field-helper">
-          Minimum 20 characters. Be as detailed as possible for better analysis.
-        </div>
-        <div class="actions">
-          <button id="analyzeBtn" class="btn btn-primary" aria-label="Start Analysis">Analyze</button>
-        </div>
-      </div>
-    </section>
+
+	<section id="companyInputSection" class="input-section">
+	  <div class="input-header">
+		<h2>Analyze a Company</h2>
+		<p class="input-description">Paste a company website URL. We’ll analyze the company, then automatically run Competitive and Market assessments.</p>
+	  </div>
+
+	  <div class="input-grid single-column">
+		<div class="input-field">
+		  <label for="companyUrlInput">Company website</label>
+		  <input id="companyUrlInput" type="url" placeholder="https://example.com" required style="width:100%; padding:.75rem; border:2px solid var(--gray-200); border-radius:.5rem;">
+		  <div class="field-helper">Example: https://xtalsonic.com/</div>
+		</div>
+		<div class="input-actions">
+		  <button id="analyzeCompanyBtn" class="btn-primary analyze-btn">Analyze Company</button>
+		</div>
+	  </div>
+	</section>
+
 
     <!-- Loading Section -->
     <section id="loadingSection" class="loading-section" style="display:none;">
@@ -355,7 +355,11 @@
       <!-- Summary Section -->
       <div id="summarySection" class="summary-layout" style="display:none;">
 		  <h2 class="summary-title">Assessment Summary</h2>
-
+		<!-- Inside #summarySection, just above the .summary-grid -->
+		<div id="companySummary" class="summary-card" style="display:none;">
+		  <h3>Company</h3>
+		  <div id="companySummaryBody"></div>
+		</div>
 		  <div class="summary-grid">
 			<div class="summary-card">
 			  <h3>Competitive</h3>
@@ -417,15 +421,22 @@
 
 
     <!-- Scripts -->
-    <script src="js/utils/formatters.js"></script>
-    <script src="js/state/store.js"></script>
-    <script src="js/utils/export.js"></script>
-    <script src="js/api/competitive.js"></script>
-    <script src="js/api/market.js"></script>
-    <script src="js/components/rubric.js"></script>
-    <script src="js/components/evidence.js"></script>
-    <script src="js/components/assessment.js"></script>
-    <script src="js/app.js"></script>
+	<script src="js/utils/formatters.js"></script>
+	<script src="js/state/store.js"></script>
+	<script src="js/utils/export.js"></script>
+	<script src="js/api/competitive.js"></script>
+	<script src="js/api/market.js"></script>
+	<script src="js/components/rubric.js"></script>
+	<script src="js/components/evidence.js"></script>
+
+
+	<script src="js/utils/loading-ui.js"></script>
+
+	<script src="js/components/assessment.js"></script>
+	<script src="js/api/company.js"></script>
+	<script src="js/mappers/company-to-assessments.js"></script>
+	<script src="js/views/company.js"></script>
+	<script src="js/app.js"></script>
   </div>
 </body>
 </html>
