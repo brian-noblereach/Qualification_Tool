@@ -87,6 +87,70 @@ const AssessmentComponent = {
             progress.style.display = 'none';
         }
     },
+	
+	// === Company auto-flow helpers ============================================
+	async runCompetitiveFromText(text) {
+	  // Persist the description so export/summary can show it
+	  try { StateManager.setTechDescription?.(text); } catch (_) {}
+
+	  // Try the Competitive runner in a tolerant order
+	  const runner =
+		  (typeof CompetitiveAPI?.run === "function" && CompetitiveAPI.run) ||
+		  (typeof CompetitiveAPI?.analyze === "function" && CompetitiveAPI.analyze) ||
+		  (typeof CompetitiveAPI?.startAssessment === "function" && CompetitiveAPI.startAssessment) ||
+		  (typeof CompetitiveAPI?.start === "function" && CompetitiveAPI.start) ||
+		  null;
+
+	  if (runner) {
+		// Most of your API methods accept (text) or ({ text })
+		// Try plain text first; if it throws a type error, try object shape.
+		try {
+		  return await runner.call(CompetitiveAPI, text);
+		} catch (e) {
+		  // fallback if API expects an options object
+		  return await runner.call(CompetitiveAPI, { text });
+		}
+	  }
+
+	  // Last-resort fallback: reuse any existing “manual” path
+	  if (typeof this.runCompetitive === "function") {
+		const ta = document.getElementById("techDescription");
+		if (ta) ta.value = text;
+		return await this.runCompetitive();
+	  }
+
+	  throw new Error("No competitive analysis runner found.");
+	},
+
+	async runMarketFromText(text) {
+	  // Persist for consistency (some summaries read from state)
+	  try { StateManager.setTechDescription?.(text); } catch (_) {}
+
+	  const runner =
+		  (typeof MarketAPI?.run === "function" && MarketAPI.run) ||
+		  (typeof MarketAPI?.analyze === "function" && MarketAPI.analyze) ||
+		  (typeof MarketAPI?.startAssessment === "function" && MarketAPI.startAssessment) ||
+		  (typeof MarketAPI?.start === "function" && MarketAPI.start) ||
+		  null;
+
+	  if (runner) {
+		try {
+		  return await runner.call(MarketAPI, text);
+		} catch (e) {
+		  return await runner.call(MarketAPI, { text });
+		}
+	  }
+
+	  if (typeof this.runMarket === "function") {
+		const ta = document.getElementById("techDescription");
+		if (ta) ta.value = text;
+		return await this.runMarket();
+	  }
+
+	  throw new Error("No market analysis runner found.");
+	},
+	// ========================================================================
+
 
     // Switch between assessments with validation
     switchAssessment(assessment) {
