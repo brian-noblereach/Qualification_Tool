@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Venture Assessment Platform</title>
-
+  
   <!-- Styles -->
   <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/components.css">
-
+  
   <!-- jsPDF for export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 </head>
@@ -16,64 +15,357 @@
   <div class="container">
     <!-- Header -->
     <header class="header">
-      <div class="company-info">
-        <h1 id="companyName">Venture Assessment Platform</h1>
-        <div id="companyMeta">Enter technology description to begin assessment</div>
+      <div class="header-content">
+        <h1>Venture Assessment Platform</h1>
+        <p class="header-subtitle">Competitive Risk & Market Opportunity Analysis</p>
       </div>
       <div class="header-actions">
         <button id="newAnalysisBtn" class="btn btn-secondary" style="display:none;">
-          <span class="btn-icon">↺</span> New Analysis
+          New Analysis
         </button>
-        <button id="exportBtn" class="btn btn-primary" style="display:none;" aria-label="Export Report">
-          <span class="btn-icon">📄</span> Export Report
+        <button id="exportBtn" class="btn btn-primary" style="display:none;">
+          Export Report
         </button>
       </div>
     </header>
 
-    <!-- Input Section -->
-
-	<section id="companyInputSection" class="input-section">
-	  <div class="input-header">
-		<h2>Analyze a Company</h2>
-		<p class="input-description">Paste a company website URL. We’ll analyze the company, then automatically run Competitive and Market assessments.</p>
+	<!-- Company Header Bar (shows during assessment) -->
+	<div id="companyHeaderBar" class="company-header-bar">
+	  <div class="company-header-info">
+		<div class="company-header-left">
+		  <div class="company-header-name" id="headerCompanyName">-</div>
+		  <div class="company-header-tagline" id="headerTagline">-</div>
+		</div>
+		<div class="company-header-meta">
+		  <span id="headerIndustry">-</span>
+		  <span class="meta-separator">•</span>
+		  <span id="headerStage">-</span>
+		</div>
 	  </div>
+	</div>
 
-	  <div class="input-grid single-column">
-		<div class="input-field">
-		  <label for="companyUrlInput">Company website</label>
-		  <input id="companyUrlInput" type="url" placeholder="https://example.com" required style="width:100%; padding:.75rem; border:2px solid var(--gray-200); border-radius:.5rem;">
-		  <div class="field-helper">Example: https://xtalsonic.com/</div>
+    <!-- Input Section -->
+	<section id="inputSection" class="input-section">
+	  <div class="input-card">
+		<h2>Analyze a Company</h2>
+		<p class="input-description">
+		  Enter a company website to analyze competitive risk and market opportunity.
+		  The complete analysis takes approximately 15-20 minutes.
+		</p>
+		
+		<div class="input-fields-container">
+		  <div class="input-field">
+			<label for="companyUrl">Company Website</label>
+			<input 
+			  id="companyUrl" 
+			  type="url" 
+			  placeholder="https://example.com" 
+			  autocomplete="url"
+			  spellcheck="false"
+			>
+			<div class="field-helper">
+			  Example: https://openai.com
+			</div>
+		  </div>
+		  
+		  <div class="input-field">
+			<label for="scaName">Your Name</label>
+			<input 
+			  id="scaName" 
+			  type="text" 
+			  placeholder="Enter your name" 
+			  autocomplete="name"
+			  spellcheck="false"
+			>
+			<div class="field-helper">
+			  This will appear on the exported report
+			</div>
+		  </div>
 		</div>
-		<div class="input-actions">
-		  <button id="analyzeCompanyBtn" class="btn-primary analyze-btn">Analyze Company</button>
-		</div>
+		
+		<button id="analyzeBtn" class="btn btn-primary btn-large">
+		  Analyze Company
+		</button>
 	  </div>
 	</section>
 
-
-    <!-- Loading Section -->
-    <section id="loadingSection" class="loading-section" style="display:none;">
-      <div class="loading-modal">
-        <div class="loading-header">
-          <div class="phase-indicators">
-            <div class="phase-indicator" data-phase="competitive">
-              <span class="phase-dot"></span> Competitive
+    <!-- Progress Section -->
+    <section id="progressSection" class="progress-section" style="display:none;">
+      <div class="progress-card">
+        <h2>Analysis in Progress</h2>
+        
+        <div class="phase-list">
+          <div class="phase-item" data-phase="company">
+            <div class="phase-indicator">
+              <span class="phase-number">1</span>
+              <span class="phase-check" style="display:none;">✓</span>
             </div>
-            <div class="phase-connector"></div>
-            <div class="phase-indicator" data-phase="market">
-              <span class="phase-dot"></span> Market
+            <div class="phase-content">
+              <div class="phase-name">Company Analysis</div>
+              <div class="phase-time">~8 minutes</div>
             </div>
           </div>
-          <h3 id="loadingTitle">Preparing analysis…</h3>
+          
+          <div class="phase-item" data-phase="competitive">
+            <div class="phase-indicator">
+              <span class="phase-number">2</span>
+              <span class="phase-check" style="display:none;">✓</span>
+            </div>
+            <div class="phase-content">
+              <div class="phase-name">Competitive Analysis</div>
+              <div class="phase-time">~4 minutes</div>
+            </div>
+          </div>
+          
+          <div class="phase-item" data-phase="market">
+            <div class="phase-indicator">
+              <span class="phase-number">3</span>
+              <span class="phase-check" style="display:none;">✓</span>
+            </div>
+            <div class="phase-content">
+              <div class="phase-name">Market Analysis</div>
+              <div class="phase-time">~8 minutes</div>
+            </div>
+          </div>
         </div>
-        <div class="loading-body">
-          <div class="spinner"></div>
-          <div class="progress-bar-container">
-            <div id="progressBar" class="progress-bar"></div>
+        
+        <div class="progress-bar-container">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+        
+        <div class="progress-status">
+          <span id="progressMessage">Initializing...</span>
+          <span id="progressTime">0:00 / 20:00</span>
+        </div>
+        
+        <button id="cancelBtn" class="btn btn-secondary">
+          Cancel Analysis
+        </button>
+      </div>
+    </section>
+
+    <!-- Results Section -->
+    <section id="resultsSection" class="results-section" style="display:none;">
+      <!-- Assessment Tabs -->
+		<div class="assessment-tabs">
+		  <button class="tab-btn active" data-tab="overview">
+			Company Overview
+		  </button>
+		  <button class="tab-btn" data-tab="competitive">
+			Competitive Risk
+			<span class="score-badge" id="competitiveScoreBadge"></span>
+		  </button>
+		  <button class="tab-btn" data-tab="market">
+			Market Opportunity
+			<span class="score-badge" id="marketScoreBadge"></span>
+		  </button>
+		  <button class="tab-btn" data-tab="summary">
+			Summary
+		  </button>
+		</div>
+		<!-- Company Overview Tab -->
+		<div id="overviewTab" class="tab-content active">
+		  <div class="company-overview-section">
+			<h2 style="text-align: center; margin-bottom: 2rem;">Company Overview</h2>
+			
+			<div class="company-overview-grid">
+			  <div class="overview-card">
+				<h3>Basic Information</h3>
+				<div id="overviewBasicInfo"></div>
+			  </div>
+			  
+			  <div class="overview-card">
+				<h3>Technology</h3>
+				<div id="overviewTechnology"></div>
+			  </div>
+			  
+			  <div class="overview-card">
+				<h3>Products & Applications</h3>
+				<div id="overviewProducts"></div>
+			  </div>
+			  
+			  <div class="overview-card">
+				<h3>Market Context</h3>
+				<div id="overviewMarket"></div>
+			  </div>
+			</div>
+			
+			<button id="continueToAssessment" class="continue-assessment-btn">
+			  Continue to Assessment
+			</button>
+		  </div>
+		</div>
+      <!-- Competitive Tab -->
+      <div id="competitiveTab" class="tab-content active">
+        <div class="assessment-layout">
+          <!-- Scoring Panel -->
+          <div class="scoring-panel">
+            <div class="scoring-header">
+              <h3>Competitive Risk Score</h3>
+              <div class="ai-score">
+                <span class="ai-label">AI Score</span>
+                <span class="ai-value" id="competitiveAiScore">-</span>
+              </div>
+            </div>
+            
+            <div class="user-scoring">
+              <div class="score-display" id="competitiveUserScore">5</div>
+              <input 
+                type="range" 
+                id="competitiveSlider" 
+                min="1" 
+                max="9" 
+                value="5"
+                class="score-slider"
+              >
+              <div class="score-labels">
+                <span>1</span>
+                <span>3</span>
+                <span>5</span>
+                <span>7</span>
+                <span>9</span>
+              </div>
+              
+              <div class="rubric-display" id="competitiveRubric"></div>
+              
+              <textarea 
+                id="competitiveJustification" 
+                class="justification-input"
+                placeholder="Provide your justification for this score..."
+                rows="4"
+              ></textarea>
+              
+              <div id="competitiveWarning" class="deviation-warning" style="display:none;"></div>
+              
+              <button id="competitiveSubmit" class="btn btn-primary">
+                Submit Assessment
+              </button>
+            </div>
           </div>
-          <div class="status">
-            <span id="progressStatus">Initializing…</span>
-            <span id="timeElapsed">0:00</span>
+          
+          <!-- Evidence Panel -->
+          <div class="evidence-panel">
+            <div class="evidence-header">
+              <h3>Analysis Results</h3>
+              <div class="view-toggles">
+				  <button class="view-btn active" data-view="summary">Summary</button>
+				  <button class="view-btn" data-view="detailed">Detailed</button>
+				  <button class="view-btn" data-view="sources">Sources</button>
+				</div>
+            </div>
+            
+            <div id="competitiveEvidence" class="evidence-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Market Tab -->
+      <div id="marketTab" class="tab-content" style="display:none;">
+        <div class="assessment-layout">
+          <!-- Scoring Panel -->
+          <div class="scoring-panel">
+            <div class="scoring-header">
+              <h3>Market Opportunity Score</h3>
+              <div class="ai-score">
+                <span class="ai-label">AI Score</span>
+                <span class="ai-value" id="marketAiScore">-</span>
+              </div>
+            </div>
+            
+            <div class="user-scoring">
+              <div class="score-display" id="marketUserScore">5</div>
+              <input 
+                type="range" 
+                id="marketSlider" 
+                min="1" 
+                max="9" 
+                value="5"
+                class="score-slider"
+              >
+              <div class="score-labels">
+                <span>1</span>
+                <span>3</span>
+                <span>5</span>
+                <span>7</span>
+                <span>9</span>
+              </div>
+              
+              <div class="rubric-display" id="marketRubric"></div>
+              
+              <textarea 
+                id="marketJustification" 
+                class="justification-input"
+                placeholder="Provide your justification for this score..."
+                rows="4"
+              ></textarea>
+              
+              <div id="marketWarning" class="deviation-warning" style="display:none;"></div>
+              
+              <button id="marketSubmit" class="btn btn-primary">
+                Submit Assessment
+              </button>
+            </div>
+          </div>
+          
+          <!-- Evidence Panel -->
+          <div class="evidence-panel">
+            <div class="evidence-header">
+              <h3>Analysis Results</h3>
+              <div class="view-toggles">
+				  <button class="view-btn active" data-view="summary">Summary</button>
+				  <button class="view-btn" data-view="detailed">Detailed</button>
+				  <button class="view-btn" data-view="sources">Sources</button>
+				</div>
+            </div>
+            
+            <div id="marketEvidence" class="evidence-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Tab -->
+      <div id="summaryTab" class="tab-content" style="display:none;">
+        <div class="summary-content">
+          <h2>Assessment Summary</h2>
+          
+          <div class="company-summary" id="companySummary"></div>
+          
+          <div class="scores-grid">
+            <div class="score-card">
+              <h3>Competitive Risk</h3>
+              <div class="score-comparison">
+                <div class="score-item">
+                  <span class="score-label">AI Score</span>
+                  <span class="score-value" id="summaryCompetitiveAi">-</span>
+                </div>
+                <div class="score-item">
+                  <span class="score-label">User Score</span>
+                  <span class="score-value" id="summaryCompetitiveUser">-</span>
+                </div>
+              </div>
+              <div class="justification-display" id="competitiveJustificationSummary"></div>
+            </div>
+            
+            <div class="score-card">
+              <h3>Market Opportunity</h3>
+              <div class="score-comparison">
+                <div class="score-item">
+                  <span class="score-label">AI Score</span>
+                  <span class="score-value" id="summaryMarketAi">-</span>
+                </div>
+                <div class="score-item">
+                  <span class="score-label">User Score</span>
+                  <span class="score-value" id="summaryMarketUser">-</span>
+                </div>
+              </div>
+              <div class="justification-display" id="marketJustificationSummary"></div>
+            </div>
+          </div>
+          
+          <div class="summary-actions">
+            <button id="exportFinalBtn" class="btn btn-primary btn-large">
+              Export Full Report
+            </button>
           </div>
         </div>
       </div>
@@ -81,362 +373,32 @@
 
     <!-- Error Section -->
     <section id="errorSection" class="error-section" style="display:none;">
-      <div class="error-content">
-        <div class="card">
-          <h2>⚠ Something went wrong</h2>
-          <p id="errorMessage"></p>
-          <details id="errorDetailsWrapper" style="display:none;">
-            <summary>Technical Details</summary>
-            <pre id="errorDetails"></pre>
-          </details>
-          <div class="actions">
-            <button id="retryBtn" class="btn btn-secondary">Retry Analysis</button>
-            <button onclick="App.startNewAnalysis()" class="btn btn-primary">Start Over</button>
-          </div>
+      <div class="error-card">
+        <h2>Analysis Failed</h2>
+        <p id="errorMessage"></p>
+        <div class="error-actions">
+          <button id="retryBtn" class="btn btn-secondary">
+            Retry Analysis
+          </button>
+          <button id="startOverBtn" class="btn btn-primary">
+            Start Over
+          </button>
         </div>
       </div>
     </section>
-
-    <!-- Assessment Section -->
-    <section id="assessmentSection" class="assessment-section" style="display:none;">
-      <!-- Top tabs (Competitive | Market | Summary) -->
-      <div id="assessmentTabs" class="assessment-tabs" style="display:none;">
-        <div class="assessment-tab active" data-assessment="competitive">
-          Competitive <span class="tab-score" id="competitiveTabScore"></span>
-        </div>
-        <div class="assessment-tab" data-assessment="market">
-          Market <span class="tab-score" id="marketTabScore"></span>
-        </div>
-        <div class="assessment-tab" data-assessment="summary">Summary</div>
-      </div>
-
-      <!-- Competitive Assessment -->
-      <div id="competitiveAssessment">
-
-        <!-- Two-column layout -->
-        <div class="two-panel-layout">
-          <!-- LEFT: Rubric -->
-          <aside class="rubric-panel">
-            <div class="panel-header">
-              <h2>Competitive Rubric</h2>
-              <!-- Put the AI score here; JS already updates #competitiveAiScore -->
-              <div class="ai-score-badge">
-                <div class="badge-label">AI Score</div>
-                <div class="badge-value" id="competitiveAiScore"></div>
-              </div>
-            </div>
-
-            <div class="scoring-container">
-			 <div id="competitiveUserScoreDisplay" class="score-display">5</div>
-
-			  <!-- slider first -->
-			  <input id="competitiveUserScoreSlider" class="score-slider" type="range" min="1" max="9" value="5"/>
-			  <div class="score-labels"><span>1</span><span>3</span><span>5</span><span>7</span><span>9</span></div>
-
-			  <!-- then the rubric description/table -->
-			  <div id="competitiveRubricDescription" class="rubric-description"></div>
-			  <div id="competitiveRubricTable" class="rubric-table"></div>
-              
-              <div class="comment-container">
-                <label for="competitiveScoreComment">Add your justification…</label>
-                <textarea id="competitiveScoreComment" placeholder="Add your justification…"></textarea>
-                <div class="deviation-warning" id="competitiveDeviationWarning" style="display:none;"></div>
-                <button id="competitiveSubmitBtn" class="btn btn-primary submit-btn">Submit Assessment</button>
-              </div>
-            </div>
-          </aside>
-
-          <!-- RIGHT: Evidence/content (scrollable) -->
-          <main class="evidence-panel">
-            <div class="panel-content">
-			    <div class="view-tabs">
-				  <button class="tab active" data-assessment="competitive" data-view="summary">Summary</button>
-				  <button class="tab" data-assessment="competitive" data-view="detailed">Detailed</button>
-				  <button class="tab" data-assessment="competitive" data-view="sources">Sources</button>
-				</div>
-              <!-- Summary View -->
-              <div id="competitiveSummaryView">
-                <div class="key-metrics">
-                  <div class="metric-card">
-                    <label>Total Competitors</label>
-                    <value id="competitorCount">-</value>
-                  </div>
-                  <div class="metric-card">
-                    <label>Market Leaders</label>
-                    <value id="marketLeaderCount">-</value>
-                  </div>
-                  <div class="metric-card">
-                    <label>Competitive Intensity</label>
-                    <value id="competitiveIntensity">-</value>
-                  </div>
-                  <div class="metric-card">
-                    <label>Analysis Confidence</label>
-                    <value id="competitiveConfidence">-</value>
-                  </div>
-                </div>
-
-                <div class="ai-reasoning">
-                  <div class="reasoning-header">
-                    <div class="ai-badge">AI</div>
-                    <strong>AI Reasoning</strong>
-                  </div>
-                  <p id="competitiveAiReasoning">-</p>
-                </div>
-
-                <div class="evidence-grid">
-                  <div class="evidence-card risks">
-                    <h4>Key Risks</h4>
-                    <ul id="competitiveRisksList"></ul>
-                  </div>
-                  <div class="evidence-card opportunities">
-                    <h4>Opportunities</h4>
-                    <ul id="competitiveOpportunitiesList"></ul>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Detailed View -->
-              <div id="competitiveDetailedView" style="display:none;">
-                <div class="detail-section">
-                  <h3>Competitor Breakdown</h3>
-                  <div id="competitorBreakdown"></div>
-                </div>
-                <div class="detail-section">
-                  <h3>Market Leaders &amp; Detailed Competitors</h3>
-                  <div id="marketLeadersList"></div>
-                </div>
-                <div class="evidence-grid">
-                  <div class="evidence-card risks">
-                    <h4>All Risks</h4>
-                    <ul id="allCompetitiveRisksList"></ul>
-                  </div>
-                  <div class="evidence-card opportunities">
-                    <h4>All Opportunities</h4>
-                    <ul id="allCompetitiveOpportunitiesList"></ul>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Sources View -->
-              <div id="competitiveSourcesView" style="display:none;"></div>
-            </div>
-          </main>
-        </div>
-      </div>
-
-      <!-- Market Assessment -->
-      <div id="marketAssessment" style="display:none;">
-        <!-- Two-column layout -->
-        <div class="two-panel-layout">
-          <!-- LEFT: Rubric -->
-          <aside class="rubric-panel">
-            <div class="panel-header">
-              <h2>Market Rubric</h2>
-              <!-- Put the AI score here; JS already updates #marketAiScore -->
-              <div class="ai-score-badge">
-                <div class="badge-label">AI Score</div>
-                <div class="badge-value" id="marketAiScore"></div>
-              </div>
-            </div>
-
-            <div class="scoring-container">
-			 <div id="marketUserScoreDisplay" class="score-display">5</div>
-
-			  <!-- slider first -->
-			  <input id="marketUserScoreSlider" class="score-slider" type="range" min="1" max="9" value="5"/>
-			  <div class="score-labels"><span>1</span><span>3</span><span>5</span><span>7</span><span>9</span></div>
-
-			  <!-- then the rubric description/table -->
-			  <div id="marketRubricDescription" class="rubric-description"></div>
-			  <div id="marketRubricTable" class="rubric-table"></div>
-			  
-              <div class="comment-container">
-                <label for="marketScoreComment">Add your justification…</label>
-                <textarea id="marketScoreComment" placeholder="Add your justification…"></textarea>
-                <div class="deviation-warning" id="marketDeviationWarning" style="display:none;"></div>
-                <button id="marketSubmitBtn" class="btn btn-primary submit-btn">Submit Assessment</button>
-              </div>
-            </div>
-          </aside>
-
-          <!-- RIGHT: Evidence/content (scrollable) -->
-          <main class="evidence-panel">
-            <div class="panel-content">
-				<div class="view-tabs">
-				  <button class="tab active" data-assessment="market" data-view="summary">Summary</button>
-				  <button class="tab" data-assessment="market" data-view="detailed">Detailed</button>
-				  <button class="tab" data-assessment="market" data-view="sources">Sources</button>
-				</div>
-              <!-- Summary View -->
-              <div id="marketSummaryView">
-                <div class="key-metrics">
-                  <div class="metric-card">
-                    <label>TAM</label>
-                    <value id="tamValue">-</value>
-                  </div>
-                  <div class="metric-card">
-                    <label>CAGR</label>
-                    <value id="cagrValue">-</value>
-                  </div>
-                  <div class="metric-card">
-                    <label>Primary Market</label>
-                    <value id="marketDesc">-</value>
-                  </div>
-                  <div class="metric-card">
-                    <label>Analysis Confidence</label>
-                    <value id="marketConfidence">-</value>
-                  </div>
-                </div>
-
-                <div class="ai-reasoning">
-                  <div class="reasoning-header">
-                    <div class="ai-badge">AI</div>
-                    <strong>AI Reasoning</strong>
-                  </div>
-                  <p id="marketAiReasoning">-</p>
-                </div>
-
-                <div class="evidence-grid">
-                  <div class="evidence-card strengths">
-                    <h4>Key Strengths</h4>
-                    <ul id="marketStrengthsList"></ul>
-                  </div>
-                  <div class="evidence-card limitations">
-                    <h4>Key Limitations</h4>
-                    <ul id="marketLimitationsList"></ul>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Detailed View -->
-              <div id="marketDetailedView" style="display:none;">
-                <div class="detail-section">
-                  <h3>Market Analysis</h3>
-                  <div id="marketAnalysis"></div>
-                </div>
-                <div class="evidence-grid">
-                  <div class="evidence-card strengths">
-                    <h4>All Strengths</h4>
-                    <ul id="allMarketStrengthsList"></ul>
-                  </div>
-                  <div class="evidence-card limitations">
-                    <h4>All Limitations</h4>
-                    <ul id="allMarketLimitationsList"></ul>
-                  </div>
-                </div>
-                <div class="evidence-card risks">
-                  <h4>Key Risks</h4>
-                  <ul id="marketRisksList"></ul>
-                </div>
-              </div>
-
-              <!-- Sources View -->
-              <div id="marketSourcesView" style="display:none;">
-                <div class="card">
-                  <h3>Market Size Sources</h3>
-                  <table class="sources-table">
-                    <thead>
-                      <tr>
-                        <th>Description</th>
-                        <th>TAM</th>
-                        <th>CAGR</th>
-                        <th>Link</th>
-                      </tr>
-                    </thead>
-                    <tbody id="marketSourcesTableBody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-
-      <!-- Summary Section -->
-      <div id="summarySection" class="summary-layout" style="display:none;">
-		  <h2 class="summary-title">Assessment Summary</h2>
-		<!-- Inside #summarySection, just above the .summary-grid -->
-		<div id="companySummary" class="summary-card" style="display:none;">
-		  <h3>Company</h3>
-		  <div id="companySummaryBody"></div>
-		</div>
-		  <div class="summary-grid">
-			<div class="summary-card">
-			  <h3>Competitive</h3>
-			  <div class="summary-scores">
-				<div class="summary-score">
-				  <label>AI Score</label>
-				  <value id="summaryCompetitiveAi">-</value>
-				</div>
-				<div class="summary-score">
-				  <label>User Score</label>
-				  <value id="summaryCompetitiveUser">-</value>
-				</div>
-			  </div>
-			  <div id="summaryCompetitiveJustification" class="summary-justification">
-				No assessment provided yet.
-			  </div>
-			</div>
-
-			<div class="summary-card">
-			  <h3>Market</h3>
-			  <div class="summary-scores">
-				<div class="summary-score">
-				  <label>AI Score</label>
-				  <value id="summaryMarketAi">-</value>
-				</div>
-				<div class="summary-score">
-				  <label>User Score</label>
-				  <value id="summaryMarketUser">-</value>
-				</div>
-			  </div>
-			  <div id="summaryMarketJustification" class="summary-justification">
-				No assessment provided yet.
-			  </div>
-			</div>
-		  </div>
-
-		  <div class="summary-overall">
-			<h3>Overall</h3>
-			<div class="overall-metrics">
-			  <div class="overall-metric">
-				<label>AI Average</label>
-				<value id="overallAiAverage">-</value>
-			  </div>
-			  <div class="overall-metric">
-				<label>User Average</label>
-				<value id="overallUserAverage">-</value>
-			  </div>
-			  <div class="overall-metric">
-				<label>Assessments Complete</label>
-				<value id="assessmentStatus">0/2</value>
-			  </div>
-			</div>
-		  </div>
-
-		  <div class="summary-actions">
-			<button id="finalExportBtn" class="btn btn-primary">Export Full Report</button>
-		  </div>
-		</div>
-
-
-    <!-- Scripts -->
-	<script src="js/utils/formatters.js"></script>
-	<script src="js/state/store.js"></script>
-	<script src="js/utils/export.js"></script>
-	<script src="js/api/competitive.js"></script>
-	<script src="js/api/market.js"></script>
-	<script src="js/components/rubric.js"></script>
-	<script src="js/components/evidence.js"></script>
-
-
-	<script src="js/utils/loading-ui.js"></script>
-
-	<script src="js/components/assessment.js"></script>
-	<script src="js/api/company.js"></script>
-	<script src="js/mappers/company-to-assessments.js"></script>
-	<script src="js/views/company.js"></script>
-	<script src="js/app.js"></script>
   </div>
+
+  <!-- Scripts -->
+  <script src="js/utils/validators.js"></script>
+  <script src="js/utils/formatters.js"></script>
+  <script src="js/utils/export.js"></script>
+  <script src="js/api/company.js"></script>
+  <script src="js/api/competitive.js"></script>
+  <script src="js/api/market.js"></script>
+  <script src="js/core/pipeline.js"></script>
+  <script src="js/components/assessment-view.js"></script>
+  <script src="js/components/progress-view.js"></script>
+  <script src="js/components/summary-view.js"></script>
+  <script src="js/core/app.js"></script>
 </body>
 </html>
