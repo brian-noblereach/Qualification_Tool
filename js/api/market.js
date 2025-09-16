@@ -7,7 +7,7 @@ const MarketAPI = {
       'Authorization': 'Bearer e80f3814-a651-4de7-a7ba-8478b7a9047b',
       'Content-Type': 'application/json'
     },
-    timeout: 600000 // 10 minutes
+    timeout: 700000 // 10 minutes
   },
 
   /**
@@ -260,4 +260,5 @@ const MarketAPI = {
 };
 
 // Make available globally
+
 window.MarketAPI = MarketAPI;
